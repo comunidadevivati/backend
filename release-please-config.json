@@ -1,0 +1,23 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "include-v-in-tag": true,
+  "bump-minor-pre-major": true,
+  "changelog-sections": [
+    { "type": "feat", "section": "✨ Funcionalidades" },
+    { "type": "fix", "section": "🐛 Correções" },
+    { "type": "perf", "section": "⚡ Performance" },
+    { "type": "refactor", "section": "♻️ Refatorações" },
+    { "type": "security", "section": "🔒 Segurança" },
+    { "type": "docs", "section": "📝 Documentação" },
+    { "type": "test", "section": "🧪 Testes" },
+    { "type": "build", "section": "📦 Build e dependências" },
+    { "type": "ci", "section": "👷 Integração contínua" },
+    { "type": "chore", "section": "🔧 Manutenção" }
+  ],
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "package-name": "backend"
+    }
+  }
+}
