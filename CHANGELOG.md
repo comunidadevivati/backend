@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.2](https://github.com/comunidadevivati/backend/compare/backend-v0.1.1...backend-v0.1.2) (2026-10-10)
+
+
+### 🐛 Correções
+
+* **ci:** 🐛 atualizar Node.js e proteger os nomes das branches ([dfcdf1a](https://github.com/comunidadevivati/backend/commit/dfcdf1a68315e02a504b4f991aab165e955a3a8d))
+* **husky:** 🐛 corrigir quebras de linha dos hooks no Windows ([22bb878](https://github.com/comunidadevivati/backend/commit/22bb878b193d0b2f7ae35c2cfd14dfd1b026e4cd))
+* **husky:** 🐛 corrigir quebras de linha dos hooks no Windows ([fffcea9](https://github.com/comunidadevivati/backend/commit/fffcea9a60d43d5ce6619d5be99796dae6120542))
+
 ## [0.1.1](https://github.com/comunidadevivati/backend/compare/backend-v0.1.0...backend-v0.1.1) (2026-10-10)
 
 
