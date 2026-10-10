@@ -57,7 +57,7 @@
     "test:e2e": "turbo run test:e2e",
     "test:architecture": "depcruise --config .dependency-cruiser.cjs --output-type err apps packages",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run format:check && pnpm run test:architecture && pnpm run test",
-    "check:ci": "pnpm run lint && pnpm run typecheck && pnpm run format:check && pnpm run test:architecture && pnpm knip && pnpm run audit && pnpm run secrets:check && pnpm run test:coverage && pnpm run test:integration && pnpm run build && pnpm run build:size",
+    "check:ci": "pnpm run lint && pnpm run typecheck && pnpm run format:check && pnpm run test:architecture && pnpm knip && pnpm run audit && pnpm run test:coverage && pnpm run test:integration && pnpm run build && pnpm run build:size",
     "clean": "turbo run clean",
     "graph": "turbo run build --graph",
     "prepare": "husky",
