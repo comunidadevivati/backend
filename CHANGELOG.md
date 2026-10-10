@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/comunidadevivati/backend/compare/backend-v0.1.1...backend-v0.1.2) (2026-10-10)
+
+
+### 🐛 Correções
+
+* **ci:** 🐛 atualizar Node.js e proteger os nomes das branches ([87c4b51](https://github.com/comunidadevivati/backend/commit/87c4b5156b6b28c57db14b2981fc2fd31b37d477))
+
 ## [0.1.1](https://github.com/comunidadevivati/backend/compare/backend-v0.1.0...backend-v0.1.1) (2026-10-10)
 
 
