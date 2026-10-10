@@ -27,6 +27,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Validar nome da branch
+        if: github.event_name == 'pull_request'
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          if [[ "$BRANCH_NAME" =~ ^(feat|fix|hotfix)/[a-z0-9][a-z0-9._-]*$ ]] ||
+             [[ "$BRANCH_NAME" =~ ^release-please--branches--.+$ ]] ||
+             [[ "$BRANCH_NAME" =~ ^renovate/.+$ ]]; then
+            echo "Branch permitida: $BRANCH_NAME"
+          else
+            echo "::error::Nome de branch inválido: $BRANCH_NAME"
+            echo "Use feat/, fix/ ou hotfix/."
+            exit 1
+          fi
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
         with:
