@@ -1,0 +1,13 @@
+{
+  "workspaces": {
+    ".": {
+      "entry": ["eslint.config.*", "turbo.json", "scripts/**/*.{js,cjs,mjs,ts}"],
+      "project": ["*.{js,cjs,mjs,ts}"]
+    },
+    "apps/*": {
+      "entry": ["src/**/*.spec.ts", "test/**/*.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts", "*.config.ts"]
+    }
+  },
+  "ignoreBinaries": ["dot", "gitleaks"]
+}

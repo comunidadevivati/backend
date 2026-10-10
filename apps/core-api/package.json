@@ -1,0 +1,39 @@
+{
+  "name": "@comvivati/core-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Core API da plataforma Comunidade Viva e Eficaz",
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --ignore node_modules --ignore dist src/main.ts",
+    "build": "tsc --project tsconfig.build.json",
+    "start": "node dist/main.js",
+    "lint": "oxlint src && eslint src",
+    "lint:fix": "oxlint --fix src && eslint src --fix",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "test": "vitest run --project unit",
+    "test:watch": "vitest --project unit",
+    "test:coverage": "vitest run --project unit --coverage",
+    "test:integration": "vitest run --project integration",
+    "test:e2e": "vitest run --project e2e --passWithNoTests",
+    "test:architecture": "vitest run --project architecture --passWithNoTests",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\""
+  },
+  "dependencies": {
+    "@nestjs/common": "^12.1.2",
+    "@nestjs/core": "^12.1.2",
+    "@nestjs/platform-fastify": "^12.1.2",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "^12.1.2",
+    "@vitest/coverage-v8": "5.0.3",
+    "tsx": "^4.23.15"
+  },
+  "engines": {
+    "node": ">=24.0.0 <25.0.0",
+    "pnpm": ">=12.10.1 <13.0.0"
+  }
+}

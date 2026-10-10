@@ -1,0 +1,45 @@
+{
+  "editor.formatOnSave": false,
+  "editor.formatOnSaveMode": "file",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.oxc": "always",
+    "source.fixAll.eslint": "always"
+  },
+  "oxc.enable.oxlint": true,
+  "oxc.enable.oxfmt": true,
+  "oxc.lint.run": "onType",
+  "[typescript]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "eslint.enable": true,
+  "eslint.run": "onType",
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+  "eslint.useFlatConfig": true,
+  "eslint.format.enable": true,
+  "[editorconfig]": {
+    "editor.formatOnSave": false
+  },
+  "files.associations": {
+    "**/.husky/pre-commit": "shellscript",
+    "**/.husky/pre-push": "shellscript",
+    "**/.husky/commit-msg": "shellscript"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "import", "unicorn", "promise", "node", "oxc"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "pedantic": "warn",
+    "perf": "warn"
+  },
+  "env": {
+    "builtin": true,
+    "node": true,
+    "es2024": true
+  },
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/.turbo/**",
+    "**/*.tsbuildinfo"
+  ],
+  "rules": {
+    "eqeqeq": "error",
+    "curly": "error",
+    "no-debugger": "error",
+    "no-console": "warn",
+    "no-eval": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "no-duplicate-imports": "error",
+    "import/no-default-export": "error",
+    "import/no-duplicates": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-non-null-assertion": "warn",
+    "typescript/consistent-type-imports": "error",
+    "typescript/no-unused-vars": "error",
+    "typescript/no-extraneous-class": [
+      "error",
+      {
+        "allowWithDecorator": true
+      }
+    ],
+    "import/no-unassigned-import": [
+      "error",
+      {
+        "allow": ["reflect-metadata"]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["**/*.config.ts", "**/*.config.js", "**/*.config.mjs"],
+      "rules": {
+        "import/no-default-export": "off"
+      }
+    },
+    {
+      "files": ["**/*.test.ts", "**/*.spec.ts", "**/*.e2e-spec.ts"],
+      "rules": {
+        "typescript/no-non-null-assertion": "off"
+      }
+    }
+  ]
+}

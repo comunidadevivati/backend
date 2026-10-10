@@ -1,0 +1,4 @@
+set -e
+
+# Executar apenas validações não realizadas no pre-commit
+pnpm run check:push

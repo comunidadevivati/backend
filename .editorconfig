@@ -1,0 +1,98 @@
+# ============================================================
+# Comunidade Viva e Eficaz — Backend
+# EditorConfig
+# ============================================================
+
+root = true
+
+# ============================================================
+# Configurações globais
+# ============================================================
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+tab_width = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# ============================================================
+# TypeScript / JavaScript
+# ============================================================
+
+[*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}]
+indent_style = space
+indent_size = 2
+tab_width = 2
+max_line_length = 100
+
+# ============================================================
+# JSON / JSONC / YAML
+# ============================================================
+
+[*.{json,jsonc,yaml,yml}]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# ============================================================
+# Markdown
+# ============================================================
+
+[*.md]
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = false
+
+# ============================================================
+# Shell scripts
+# ============================================================
+
+[*.{sh,bash}]
+indent_style = space
+indent_size = 2
+
+# ============================================================
+# SQL
+# ============================================================
+
+[*.sql]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# ============================================================
+# Dockerfile
+# ============================================================
+
+[Dockerfile]
+indent_style = space
+indent_size = 2
+
+[Dockerfile.*]
+indent_style = space
+indent_size = 2
+
+# ============================================================
+# Makefile
+# ============================================================
+
+[Makefile]
+indent_style = tab
+
+# ============================================================
+# Arquivos Windows
+# ============================================================
+
+[*.{bat,cmd}]
+end_of_line = crlf
+
+# ============================================================
+# Arquivos binários
+# ============================================================
+
+[*.{png,jpg,jpeg,gif,ico,webp,pdf,woff,woff2,ttf}]
+insert_final_newline = unset
+trim_trailing_whitespace = unset
