@@ -1,0 +1,262 @@
+# ============================================================================
+# COMUNIDADE VIVA — BACKEND MONOREPO
+# Git ignore rules for Node.js / TypeScript / pnpm / Turborepo / NestJS
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# 01. Dependencies and package-manager caches
+# ---------------------------------------------------------------------------
+node_modules/
+**/node_modules/
+.pnpm-store/
+**/.pnpm-store/
+.npm/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# ---------------------------------------------------------------------------
+# 02. Logs and diagnostic output
+# ---------------------------------------------------------------------------
+*.log
+*.log.*
+logs/
+**/logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.pid
+*.pid.lock
+
+# ---------------------------------------------------------------------------
+# 03. Build outputs, caches, compiler artifacts
+# ---------------------------------------------------------------------------
+**/dist/
+**/build/
+**/out/
+**/.output/
+**/.next/
+**/.nuxt/
+**/.svelte-kit/
+**/.angular/
+**/.cache/
+**/.turbo/
+**/.parcel-cache/
+**/.vite/
+**/node_modules/.cache/
+*.tsbuildinfo
+*.tsbuildinfo.*
+.esbuild/
+
+# ---------------------------------------------------------------------------
+# 04. Testing and coverage artifacts
+# ---------------------------------------------------------------------------
+**/coverage/
+**/.nyc_output/
+**/test-results/
+**/playwright-report/
+**/blob-report/
+**/allure-results/
+**/allure-report/
+**/junit-results/
+**/vitest-results/
+*.lcov
+coverage-final.json
+junit.xml
+test-results.xml
+
+# ---------------------------------------------------------------------------
+# 05. Generated dependency graphs and quality reports
+# ---------------------------------------------------------------------------
+/reports/
+**/dependency-cruiser-report/
+**/knip-report/
+**/sonar-report/
+.scannerwork/
+.sonar/
+**/stryker-tmp/
+mutation-report/
+
+# ---------------------------------------------------------------------------
+# 06. Environment configuration and local secrets
+# ---------------------------------------------------------------------------
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!.env.sample
+!.env.template
+!**/.env.example
+!**/.env.sample
+!**/.env.template
+
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.kdbx
+*.asc
+*.age
+*.sops.yaml
+*.sops.yml
+*.sops.json
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+!.terraform.tfvars.example
+
+# Local private configuration only (do not ignore shared .npmrc)
+.npmrc.local
+.npmrc.private
+*.secret.json
+*.secrets.json
+*.credentials.json
+secrets/
+**/.secrets/
+
+# ---------------------------------------------------------------------------
+# 07. Local databases, dumps, Redis and runtime storage
+# ---------------------------------------------------------------------------
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.rdb
+appendonly.aof
+appendonlydir/
+*.dump
+*.sql.gz
+*.backup
+*.bak
+/data/
+/storage/
+/uploads/
+/tmp/
+/temp/
+**/runtime-data/
+
+# Keep source-controlled SQL migrations, Drizzle metadata and schema files.
+
+# ---------------------------------------------------------------------------
+# 08. Docker and local infrastructure
+# ---------------------------------------------------------------------------
+.docker/
+.docker-data/
+**/.docker-data/
+docker-compose.override.yml
+docker-compose.override.yaml
+compose.override.yml
+compose.override.yaml
+*.container.log
+
+# ---------------------------------------------------------------------------
+# 09. Terraform local working state (keep tracked infrastructure definitions)
+# ---------------------------------------------------------------------------
+**/.terraform/
+.terraform.lock.hcl.local
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# ---------------------------------------------------------------------------
+# 10. IDEs, editors and developer-specific settings
+# ---------------------------------------------------------------------------
+.idea/
+*.iml
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.history/
+.localhistory/
+*.code-workspace
+*.swp
+*.swo
+*~
+
+# Keep shared VS Code settings and extension recommendations tracked.
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# ---------------------------------------------------------------------------
+# 11. Operating system artifacts
+# ---------------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.Spotlight-V100/
+.Trashes/
+._*
+
+# ---------------------------------------------------------------------------
+# 12. Temporary files, patch leftovers and editor backups
+# ---------------------------------------------------------------------------
+*.tmp
+*.temp
+*.orig
+*.rej
+*.swp
+*.swn
+*.old
+*.backup
+*.backup.*
+*.stackdump
+*.core
+core.*
+
+# ---------------------------------------------------------------------------
+# 13. Profiling and diagnostic artifacts
+# ---------------------------------------------------------------------------
+*.cpuprofile
+*.heapprofile
+*.heapsnapshot
+*.prof
+*.profraw
+*.trace
+*.trace.json
+
+# ---------------------------------------------------------------------------
+# 14. Tool-specific local artifacts
+# ---------------------------------------------------------------------------
+.vercel/
+.netlify/
+.serverless/
+.aws-sam/
+.firebase/
+.emulator_console_auth_token
+
+# ---------------------------------------------------------------------------
+# IMPORTANT: The following MUST remain versioned
+# ---------------------------------------------------------------------------
+# pnpm-lock.yaml / pnpm-workspace.yaml / package.json
+# turbo.json / tsconfig*.json / *.config.ts / *.config.mjs
+# .dependency-cruiser.cjs / knip.json / .lintstagedrc.json
+# .husky/ / .github/workflows/ / Dockerfile* / compose*.yaml
+# Drizzle migrations and metadata / SQL migrations / seed source code
+# AGENTS.md / CLAUDE.md / README.md / docs/
+# Public Keycloak realm templates (without real credentials)
