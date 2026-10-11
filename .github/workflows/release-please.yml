@@ -9,6 +9,10 @@ permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
 jobs:
   release:
     name: Versionamento e changelog
@@ -16,7 +20,37 @@ jobs:
 
     steps:
       - name: Preparar release
+        id: release
         uses: googleapis/release-please-action@v5
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      # Squash é assinado pelo GitHub, exigência do ruleset da main; rebase não é.
+      # Merges feitos com o GITHUB_TOKEN não disparam novos workflows,
+      # por isso a publicação da release acontece no próximo passo.
+      - name: Mesclar PR de release
+        if: steps.release.outputs.prs_created == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr).number }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --squash --delete-branch; then
+              exit 0
+            fi
+
+            echo "Tentativa $attempt falhou; aguardando o GitHub calcular a mesclagem."
+            sleep 10
+          done
+
+          echo "::error::Não foi possível mesclar o PR de release #$PR_NUMBER."
+          exit 1
+
+      - name: Publicar tag e release
+        if: steps.release.outputs.prs_created == 'true'
+        uses: googleapis/release-please-action@v5
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          skip-github-pull-request: true
