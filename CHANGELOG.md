@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.2.0](https://github.com/comunidadevivati/backend/compare/backend-v0.1.2...backend-v0.2.0) (2026-10-11)
+
+
+### ✨ Funcionalidades
+
+* **bff:** ✨ implementa autenticação OIDC com Keycloak e sessões Redis ([ac53667](https://github.com/comunidadevivati/backend/commit/ac536679f81e31df3ce83e658faad4afd1dd4164))
+* **bff:** ✨ implementa autenticação OIDC e sessões Redis ([4cc06fc](https://github.com/comunidadevivati/backend/commit/4cc06fc31c33edb28ec8da5d371605a3513ba127))
+
+
+### 🐛 Correções
+
+* **bff:** 🐛 remove export não utilizado do schema de ambiente ([0807af4](https://github.com/comunidadevivati/backend/commit/0807af441849275ca72176c98977682e7fa3955d))
+
+
+### 📝 Documentação
+
+* **agents:** 📝 registra bloco de orientação do Turborepo para agentes ([5b157a1](https://github.com/comunidadevivati/backend/commit/5b157a1d0dbbf97aa004d307567d0807cec73429))
+
+
+### 🧪 Testes
+
+* **auth:** 🧪 adiciona testes de sessões e autenticação ([07492db](https://github.com/comunidadevivati/backend/commit/07492db61188f9d90d0c1eabf3ecfc4fdbccabda))
+* **bff:** 🧪 adiciona testes unitários de autenticação e infraestrutura ([3150b5d](https://github.com/comunidadevivati/backend/commit/3150b5dc0bc10d3dd548c390342d5888274578d7))
+
+
+### 👷 Integração contínua
+
+* **release:** 👷 automatiza publicação de releases e aceita branches release/X.Y.Z ([#7](https://github.com/comunidadevivati/backend/issues/7)) ([49c19ad](https://github.com/comunidadevivati/backend/commit/49c19ad0d41c8141b67653323c546ed4ebe8affb))
+
+
+### 🔧 Manutenção
+
+* **infra:** 🔧 configura serviços Docker da plataforma ([9ded846](https://github.com/comunidadevivati/backend/commit/9ded846f98d1cac814fa0e7b96a70c733ceb4a29))
+
 ## [0.1.2](https://github.com/comunidadevivati/backend/compare/backend-v0.1.1...backend-v0.1.2) (2026-10-10)
 
 
