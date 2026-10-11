@@ -26,6 +26,7 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+      # Squash é assinado pelo GitHub, exigência do ruleset da main; rebase não é.
       # Merges feitos com o GITHUB_TOKEN não disparam novos workflows,
       # por isso a publicação da release acontece no próximo passo.
       - name: Mesclar PR de release
@@ -35,7 +36,7 @@ jobs:
           PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr).number }}
         run: |
           for attempt in 1 2 3 4 5; do
-            if gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --rebase --delete-branch; then
+            if gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --squash --delete-branch; then
               exit 0
             fi
 
