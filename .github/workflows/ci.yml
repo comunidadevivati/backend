@@ -33,12 +33,13 @@ jobs:
           BRANCH_NAME: ${{ github.head_ref }}
         run: |
           if [[ "$BRANCH_NAME" =~ ^(feat|fix|hotfix)/[a-z0-9][a-z0-9._-]*$ ]] ||
+             [[ "$BRANCH_NAME" =~ ^release/[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
              [[ "$BRANCH_NAME" =~ ^release-please--branches--.+$ ]] ||
              [[ "$BRANCH_NAME" =~ ^renovate/.+$ ]]; then
             echo "Branch permitida: $BRANCH_NAME"
           else
             echo "::error::Nome de branch inválido: $BRANCH_NAME"
-            echo "Use feat/, fix/ ou hotfix/."
+            echo "Use feat/, fix/, hotfix/ ou release/X.Y.Z."
             exit 1
           fi
 
