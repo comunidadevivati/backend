@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/comunidadevivati/backend/compare/backend-v0.2.0...backend-v0.2.1) (2026-10-11)
+
+
+### 👷 Integração contínua
+
+* **release:** 👷 ignora o Backend CI em PRs de release ([#8](https://github.com/comunidadevivati/backend/issues/8)) ([ebe0795](https://github.com/comunidadevivati/backend/commit/ebe0795ec195d7dedc7420d54a9e967acc4af047))
+
 ## [0.2.0](https://github.com/comunidadevivati/backend/compare/backend-v0.1.2...backend-v0.2.0) (2026-10-11)
 
 
