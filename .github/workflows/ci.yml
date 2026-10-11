@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    # PRs de release só alteram estes arquivos e são mesclados pelo
+    # workflow Release Please; o CI ficaria aguardando aprovação até expirar.
+    paths-ignore:
+      - CHANGELOG.md
+      - .release-please-manifest.json
   schedule:
     - cron: '0 9 * * *'
   workflow_dispatch:
