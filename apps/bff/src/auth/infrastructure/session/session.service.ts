@@ -5,6 +5,9 @@ import { RedisService } from '../../../shared/infrastructure/redis/redis.service
 
 export interface AuthSession {
   subject: string;
+  email?: string;
+  name?: string;
+  csrfToken: string;
   accessToken: string;
   refreshToken?: string;
   idToken?: string;

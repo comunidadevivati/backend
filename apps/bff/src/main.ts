@@ -16,6 +16,13 @@ const bootstrap = async (): Promise<void> => {
     secret: config.getOrThrow<string>('COOKIE_SECRET'),
   });
 
+  app.enableCors({
+    origin: new URL(config.getOrThrow<string>('WEB_BASE_URL')).origin,
+    credentials: true,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Accept', 'Content-Type', 'X-CSRF-Token'],
+  });
+
   app.enableShutdownHooks();
 
   await app.listen(port, '127.0.0.1');

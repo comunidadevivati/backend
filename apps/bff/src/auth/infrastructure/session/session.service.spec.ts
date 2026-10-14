@@ -6,6 +6,7 @@ import type { ConfigService } from '@nestjs/config';
 
 const sessionData: AuthSession = {
   subject: 'usuario-123',
+  csrfToken: 'csrf-token-teste',
   accessToken: 'access-token-teste',
   refreshToken: 'refresh-token-teste',
   idToken: 'id-token-teste',

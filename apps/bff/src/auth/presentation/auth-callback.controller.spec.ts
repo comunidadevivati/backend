@@ -73,7 +73,7 @@ describe('AuthController — callback autorizado', () => {
       access_token: 'access-token-teste',
       refresh_token: 'refresh-token-teste',
       expires_in: 300,
-    } as Awaited<ReturnType<typeof authorizationCodeGrant>>);
+    } as unknown as Awaited<ReturnType<typeof authorizationCodeGrant>>);
 
     await fixture.controller.callback(fixture.request, fixture.reply as unknown as FastifyReply);
 
@@ -87,7 +87,7 @@ describe('AuthController — callback autorizado', () => {
 
     expect(fixture.reply.code).toHaveBeenCalledWith(302);
 
-    expect(fixture.reply.redirect).toHaveBeenCalledWith('http://localhost:5173');
+    expect(fixture.reply.redirect).toHaveBeenCalledWith('http://localhost:5173/dashboard');
   });
 });
 
@@ -158,16 +158,23 @@ describe('AuthController — tokens opcionais', () => {
     const fixture = createFixture();
 
     grantMock.mockResolvedValueOnce({
-      claims: () => ({ sub: 'usuario-456' }),
+      claims: () => ({
+        sub: 'usuario-456',
+        email: 'usuario@exemplo.com',
+        name: 'Usuário Exemplo',
+      }),
       access_token: 'access-token-teste',
       id_token: 'id-token-teste',
-    } as Awaited<ReturnType<typeof authorizationCodeGrant>>);
+    } as unknown as Awaited<ReturnType<typeof authorizationCodeGrant>>);
 
     await fixture.controller.callback(fixture.request, fixture.reply as unknown as FastifyReply);
 
     expect(fixture.createSession).toHaveBeenCalledWith(
       expect.objectContaining({
         subject: 'usuario-456',
+        email: 'usuario@exemplo.com',
+        name: 'Usuário Exemplo',
+        csrfToken: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/u),
         idToken: 'id-token-teste',
         accessToken: 'access-token-teste',
       }),
