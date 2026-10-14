@@ -114,3 +114,37 @@ describe('SessionService — exclusão', () => {
     expect(await service.getSession(sessionId)).toBeNull();
   });
 });
+
+describe('SessionService — validações adicionais', () => {
+  it('deve rejeitar uma chave de criptografia inválida', () => {
+    const redis = {
+      getClient: vi.fn(),
+    } as unknown as RedisService;
+
+    const config = {
+      getOrThrow: vi.fn(() => 'chave-invalida'),
+    } as unknown as ConfigService;
+
+    expect(() => new SessionService(redis, config)).toThrow(
+      'SESSION_ENCRYPTION_KEY deve conter 32 bytes.',
+    );
+  });
+
+  it('deve ignorar a exclusão de identificadores inválidos', async () => {
+    const { service, client } = createFixture();
+
+    await service.deleteSession('identificador-invalido');
+
+    expect(client.del).not.toHaveBeenCalled();
+  });
+
+  it('deve rejeitar uma sessão com partes incompletas', async () => {
+    const { service, storage } = createFixture();
+
+    const sessionId = await service.createSession(sessionData);
+
+    storage.set(`comvivati:bff:session:${sessionId}`, '.assinatura.conteudo');
+
+    await expect(service.getSession(sessionId)).rejects.toThrow('Dados da sessão incompletos.');
+  });
+});
