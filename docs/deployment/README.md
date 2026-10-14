@@ -19,13 +19,13 @@ O Worker BullMQ, PostgreSQL, Redis e Keycloak não fazem parte desses Containers
 Frontend web
     |
     v
-Worker comvivati-bff-poc
+Worker comvivati-bff
     |
     v
 BFF Container :3000 ----> Keycloak HTTPS
     |                    -> Redis TLS
     v
-Worker comvivati-core-api-poc
+Worker comvivati-core-api
     |
     v
 Core API Container :3001
@@ -117,8 +117,8 @@ pnpm run cloudflare:deploy:bff
 O primeiro provisionamento pode levar alguns minutos. Confirme os endpoints:
 
 ```text
-https://comvivati-core-api-poc.<workers-subdomain>.workers.dev/api/v1/health
-https://comvivati-bff-poc.<workers-subdomain>.workers.dev/health
+https://comvivati-core-api.<workers-subdomain>.workers.dev/api/v1/health
+https://comvivati-bff.<workers-subdomain>.workers.dev/health
 ```
 
 Antes de validar o login, atualize no Keycloak a redirect URI exata informada em
@@ -126,13 +126,13 @@ Antes de validar o login, atualize no Keycloak a redirect URI exata informada em
 
 ## 8. Publicação pelo GitHub Actions
 
-Crie o environment protegido `cloudflare-poc` no GitHub e adicione:
+Crie o environment protegido `cloudflare` no GitHub e adicione:
 
 - `CLOUDFLARE_ACCOUNT_ID`;
 - `CLOUDFLARE_API_TOKEN`.
 
 Os secrets de runtime do BFF permanecem no Cloudflare, não no workflow. Execute manualmente o
-workflow `Deploy Cloudflare PoC` e escolha `core-api` ou `bff`. Recomenda-se exigir aprovação do
+workflow `Deploy Cloudflare Backend` e escolha `core-api` ou `bff`. Recomenda-se exigir aprovação do
 environment antes de cada publicação.
 
 ## 9. Critérios para concluir a prova de conceito

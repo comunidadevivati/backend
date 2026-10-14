@@ -22,7 +22,7 @@
     "cloudflare:typecheck": "tsc --project tsconfig.cloudflare.json --noEmit",
     "cloudflare:check": "wrangler deploy --config wrangler.jsonc --dry-run --containers-rollout=none --outdir .wrangler-dist",
     "cloudflare:deploy": "wrangler deploy --config wrangler.jsonc",
-    "container:build": "docker build --file Dockerfile --tag comvivati/core-api:poc ../.."
+    "container:build": "docker build --file Dockerfile --tag comvivati/core-api:local ../.."
   },
   "dependencies": {
     "@nestjs/common": "^12.1.2",

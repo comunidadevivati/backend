@@ -1,6 +1,6 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "comvivati-core-api-poc",
+  "name": "comvivati-core-api",
   "main": "cloudflare/worker.ts",
   "compatibility_date": "2026-10-14",
   "upload_source_maps": true,

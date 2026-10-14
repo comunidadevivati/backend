@@ -20,7 +20,7 @@
     "cloudflare:typecheck": "tsc --project tsconfig.cloudflare.json --noEmit",
     "cloudflare:check": "wrangler deploy --config wrangler.jsonc --dry-run --containers-rollout=none --outdir .wrangler-dist",
     "cloudflare:deploy": "wrangler deploy --config wrangler.jsonc",
-    "container:build": "docker build --file Dockerfile --tag comvivati/bff:poc ../.."
+    "container:build": "docker build --file Dockerfile --tag comvivati/bff:local ../.."
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.3",
