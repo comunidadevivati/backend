@@ -1,0 +1,15 @@
+.git
+.github
+.husky
+.turbo
+.wrangler
+**/.wrangler
+**/.wrangler-dist
+**/coverage
+**/dist
+**/node_modules
+.env
+.env.*
+!.env.example
+reports
+*.log

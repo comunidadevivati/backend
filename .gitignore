@@ -249,6 +249,9 @@ core.*
 .aws-sam/
 .firebase/
 .emulator_console_auth_token
+.wrangler/
+**/.wrangler/
+**/.wrangler-dist/
 
 # ---------------------------------------------------------------------------
 # IMPORTANT: The following MUST remain versioned

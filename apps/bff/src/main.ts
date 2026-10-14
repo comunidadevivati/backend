@@ -25,7 +25,7 @@ const bootstrap = async (): Promise<void> => {
 
   app.enableShutdownHooks();
 
-  await app.listen(port, '127.0.0.1');
+  await app.listen(port, '0.0.0.0');
 };
 
 await bootstrap();

@@ -52,6 +52,7 @@ module.exports = {
       from: {},
       to: {
         couldNotResolve: true,
+        pathNot: '^(@cloudflare/containers|cloudflare:workers)$',
       },
     },
     {
@@ -125,6 +126,9 @@ module.exports = {
     ...applicationIsolationRules,
   ],
   options: {
+    exclude: {
+      path: '\\.wrangler-dist/',
+    },
     doNotFollow: {
       path: 'node_modules',
     },

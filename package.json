@@ -57,7 +57,7 @@
     "test:e2e": "turbo run test:e2e",
     "test:architecture": "depcruise --config .dependency-cruiser.cjs --output-type err apps packages",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run format:check && pnpm run test:architecture && pnpm run test",
-    "check:ci": "pnpm run lint && pnpm run typecheck && pnpm run format:check && pnpm run test:architecture && pnpm knip && pnpm run audit && pnpm run test:coverage && pnpm run test:integration && pnpm run build && pnpm run build:size",
+    "check:ci": "pnpm run lint && pnpm run typecheck && pnpm run cloudflare:typecheck && pnpm run format:check && pnpm run test:architecture && pnpm knip && pnpm run audit && pnpm run test:coverage && pnpm run test:integration && pnpm run build && pnpm run cloudflare:check && pnpm run build:size",
     "clean": "turbo run clean",
     "graph": "turbo run build --graph",
     "prepare": "husky",
@@ -71,6 +71,13 @@
     "knip": "knip",
     "audit": "pnpm audit --audit-level high",
     "build:size": "node scripts/build-size.mjs",
+    "cloudflare:check": "pnpm --dir apps/bff cloudflare:check && pnpm --dir apps/core-api cloudflare:check",
+    "cloudflare:deploy:bff": "pnpm --dir apps/bff cloudflare:deploy",
+    "cloudflare:deploy:core-api": "pnpm --dir apps/core-api cloudflare:deploy",
+    "cloudflare:typecheck": "pnpm --dir apps/bff cloudflare:typecheck && pnpm --dir apps/core-api cloudflare:typecheck",
+    "container:build": "pnpm run container:build:bff && pnpm run container:build:core-api",
+    "container:build:bff": "pnpm --dir apps/bff container:build",
+    "container:build:core-api": "pnpm --dir apps/core-api container:build",
     "secrets:check": "gitleaks git --no-banner --redact .",
     "secrets:staged": "gitleaks git --staged --no-banner --redact ."
   },
@@ -90,7 +97,8 @@
     "turbo": "2.11.8",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.2",
-    "vitest": "^5.0.4"
+    "vitest": "^5.0.4",
+    "wrangler": "4.151.0"
   },
   "engines": {
     "node": ">=24.0.0 <25.0.0",

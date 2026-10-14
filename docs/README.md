@@ -92,6 +92,10 @@ Documentação operacional:
 
 Cloudflare Containers continua sujeito à prova de conceito.
 
+O procedimento executável da prova de conceito está em
+[deployment/README.md](deployment/README.md), e a decisão proposta está registrada em
+[adr/0001-cloudflare-containers-poc.md](adr/0001-cloudflare-containers-poc.md).
+
 ## 7. Domains
 
 Especificações dos Bounded Contexts:

@@ -221,3 +221,13 @@ Novos Bounded Contexts devem iniciar como módulos internos da Core API.
 A extração para serviços independentes somente ocorrerá mediante justificativa concreta de escalabilidade, isolamento operacional ou requisitos específicos.
 
 Toda decisão arquitetural relevante deverá ser registrada em docs/adr/.
+
+## 16. Prova de conceito Cloudflare
+
+A Core API possui empacotamento OCI e um Worker roteador independente em `Dockerfile`,
+`wrangler.jsonc` e `cloudflare/worker.ts`. O Container expõe a porta `3001`, e o Worker verifica
+`/api/v1/health` antes de encaminhar tráfego.
+
+Esse suporte torna o artefato implantável para a prova de conceito, mas não aprova definitivamente
+Cloudflare Containers para produção. O procedimento e os critérios restantes estão documentados
+em `../../docs/deployment/README.md`.

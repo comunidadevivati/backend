@@ -166,6 +166,11 @@ Hospedagem preferencial:
 
 A utilização definitiva depende de prova de conceito.
 
+Os artefatos da prova de conceito ficam em `Dockerfile`, `wrangler.jsonc` e
+`cloudflare/worker.ts`. O processo Node escuta em todas as interfaces dentro do Container e recebe
+as configurações sensíveis exclusivamente por secrets do Worker. O procedimento operacional está
+em `../../docs/deployment/README.md`.
+
 O BFF deve:
 
 - Ser stateless em relação ao processo.
