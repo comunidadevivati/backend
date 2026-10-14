@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/comunidadevivati/backend/compare/backend-v0.3.0...backend-v0.3.1) (2026-10-14)
+
+
+### 👷 Integração contínua
+
+* **render:** 👷 adota infraestrutura gratuita para MVP ([#13](https://github.com/comunidadevivati/backend/issues/13)) ([839702e](https://github.com/comunidadevivati/backend/commit/839702e5f68fe52431894b08e9f6f1033c480c21))
+
 ## [0.3.0](https://github.com/comunidadevivati/backend/compare/backend-v0.2.1...backend-v0.3.0) (2026-10-14)
 
 
