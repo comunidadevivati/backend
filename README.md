@@ -2,11 +2,11 @@
 
 Projeto Backend da Comunidade Viva - API + BFF
 
-## Cloudflare
+## Deploy gratuito de MVP e homologação
 
-O repositório contém uma prova de conceito implantável do BFF e da Core API em Cloudflare
-Containers. Consulte [docs/deployment/README.md](docs/deployment/README.md) para requisitos,
-segredos, validação e publicação.
+O backend possui um Blueprint do Render para publicar Core API, BFF e Keycloak em serviços web
+gratuitos. PostgreSQL é provisionado no Neon Free, e Redis no Upstash Free. O frontend permanece
+na Cloudflare e encaminha `/auth/*` ao BFF para preservar a sessão na mesma origem.
 
-A presença dos artefatos de deploy não representa aprovação definitiva da plataforma. A decisão
-continua condicionada à validação do fluxo real com Redis, Keycloak, frontend e serviços externos.
+Essa topologia aceita cold starts, limites de uso e ausência de SLA. Ela não representa uma
+aprovação para produção. Consulte [docs/deployment/README.md](docs/deployment/README.md).

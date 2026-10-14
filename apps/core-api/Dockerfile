@@ -22,7 +22,7 @@ RUN pnpm --filter @comvivati/core-api build
 FROM node:24-bookworm-slim AS runtime
 
 ENV NODE_ENV=production
-ENV PORT=3001
+ENV PORT=10000
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 
@@ -39,6 +39,6 @@ COPY --from=build --chown=node:node /workspace/apps/core-api/dist ./apps/core-ap
 
 USER node
 
-EXPOSE 3001
+EXPOSE 10000
 
 CMD ["node", "apps/core-api/dist/main.js"]

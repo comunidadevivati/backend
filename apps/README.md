@@ -99,24 +99,24 @@ Bibliotecas reutilizáveis devem ser disponibilizadas por packages/, respeitando
 
 bff:
 
-- Cloudflare Containers como primeira opção.
-- Aprovação definitiva condicionada à prova de conceito.
+- Render Free para MVP e homologação.
+- Aprovação de produção condicionada a uma nova avaliação de capacidade e disponibilidade.
 
 core-api:
 
-- Cloudflare Containers como primeira opção.
-- Aprovação definitiva condicionada à prova de conceito.
+- Render Free para MVP e homologação.
+- Aprovação de produção condicionada a uma nova avaliação de capacidade e disponibilidade.
 
 worker:
 
 - Runtime Node.js de execução contínua.
-- Infraestrutura complementar à Cloudflare.
+- Deploy remoto postergado enquanto não houver infraestrutura contínua compatível com custo zero.
 
 CI/CD:
 
 - GitHub Actions.
-- GHCR como registry principal.
-- Cloudflare Registry para imagens implantadas na Cloudflare.
+- Render Blueprint conectado à branch `main` após os checks do CI.
+- Imagens construídas diretamente dos Dockerfiles do monorepo.
 - Publicações independentes por aplicação.
 
 ## 6. Documentação

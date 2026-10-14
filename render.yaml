@@ -1,0 +1,94 @@
+services:
+  - type: web
+    name: comvivati-core-api
+    runtime: docker
+    plan: free
+    region: virginia
+    branch: main
+    autoDeployTrigger: checksPass
+    dockerfilePath: ./apps/core-api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: '10000'
+
+  - type: web
+    name: comvivati-bff
+    runtime: docker
+    plan: free
+    region: virginia
+    branch: main
+    autoDeployTrigger: checksPass
+    dockerfilePath: ./apps/bff/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: BFF_PORT
+        value: '10000'
+      - key: BFF_BASE_URL
+        value: https://comunidade-viva-web.comvivati.workers.dev
+      - key: BFF_OIDC_CALLBACK_URL
+        value: https://comunidade-viva-web.comvivati.workers.dev/auth/callback
+      - key: WEB_BASE_URL
+        value: https://comunidade-viva-web.comvivati.workers.dev
+      - key: KEYCLOAK_ISSUER
+        value: https://comvivati-keycloak.onrender.com/realms/comunidade-viva
+      - key: KEYCLOAK_CLIENT_ID
+        value: comvivati-bff
+      - key: KEYCLOAK_CLIENT_SECRET
+        sync: false
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: SESSION_ENCRYPTION_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
+
+  - type: web
+    name: comvivati-keycloak
+    runtime: docker
+    plan: free
+    region: virginia
+    branch: main
+    autoDeployTrigger: checksPass
+    dockerfilePath: ./deploy/keycloak/Dockerfile
+    dockerContext: .
+    healthCheckPath: /realms/master/.well-known/openid-configuration
+    envVars:
+      - key: KC_DB
+        value: postgres
+      - key: KC_DB_URL
+        sync: false
+      - key: KC_DB_USERNAME
+        sync: false
+      - key: KC_DB_PASSWORD
+        sync: false
+      - key: KC_DB_POOL_INITIAL_SIZE
+        value: '0'
+      - key: KC_DB_POOL_MIN_SIZE
+        value: '0'
+      - key: KC_DB_POOL_MAX_SIZE
+        value: '5'
+      - key: KC_BOOTSTRAP_ADMIN_USERNAME
+        value: admin
+      - key: KC_BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
+      - key: KC_HOSTNAME
+        value: https://comvivati-keycloak.onrender.com
+      - key: KC_HTTP_ENABLED
+        value: 'true'
+      - key: KC_HTTP_PORT
+        value: '10000'
+      - key: KC_PROXY_HEADERS
+        value: xforwarded
+      - key: KC_HEALTH_ENABLED
+        value: 'true'
+      - key: KC_HTTP_POOL_MAX_THREADS
+        value: '20'
+      - key: JAVA_OPTS_KC_HEAP
+        value: -XX:InitialRAMPercentage=20 -XX:MaxRAMPercentage=45 -XX:MaxHeapFreeRatio=30 -XX:+ExitOnOutOfMemoryError

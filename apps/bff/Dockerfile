@@ -22,7 +22,7 @@ RUN pnpm --filter @comvivati/bff build
 FROM node:24-bookworm-slim AS runtime
 
 ENV NODE_ENV=production
-ENV BFF_PORT=3000
+ENV BFF_PORT=10000
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 
@@ -39,6 +39,6 @@ COPY --from=build --chown=node:node /workspace/apps/bff/dist ./apps/bff/dist
 
 USER node
 
-EXPOSE 3000
+EXPOSE 10000
 
 CMD ["node", "apps/bff/dist/main.js"]

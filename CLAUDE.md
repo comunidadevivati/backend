@@ -454,29 +454,23 @@ Do not expose sensitive information in telemetry.
 
 ## 16. Infrastructure
 
-Cloudflare-first hybrid topology.
+Free-tier topology for MVP and homologation.
 
 - Cloudflare Workers Static Assets for frontend.
 
 - Cloudflare R2 for S3-compatible object storage.
 
-- Cloudflare Containers as preferred BFF/Core runtime,
+- Render Free web services for BFF, Core API and Keycloak during MVP and homologation.
 
-  conditional on successful proof of concept.
+- Neon Free for PostgreSQL and Upstash Free for Redis during MVP and homologation.
 
-- External managed PostgreSQL and Redis.
-
-- Keycloak and BullMQ workers on continuous runtimes.
+- BullMQ worker deployment is postponed while no zero-cost continuous runtime is approved.
 
 - GitHub Actions for CI/CD.
 
-- GHCR as canonical container registry.
+- Render Blueprint connected to the backend `main` branch after CI checks pass.
 
-- Cloudflare Registry for deployed container images.
-
-Do not claim Cloudflare Containers compatibility
-
-has been proven until the PoC is completed.
+Do not claim the free topology is production-ready; it accepts cold starts, quotas and no SLA.
 
 Do not choose pending providers without authorization.
 
@@ -584,11 +578,7 @@ Do not invent final choices for:
 
   concurrent with membership registration.
 
-- PostgreSQL provider.
-
-- Redis provider.
-
-- Keycloak hosting provider.
+- Final production providers for PostgreSQL, Redis and Keycloak.
 
 - Email provider.
 

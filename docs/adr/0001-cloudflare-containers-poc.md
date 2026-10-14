@@ -1,6 +1,6 @@
 # ADR 0001 — Prova de conceito com Cloudflare Containers
 
-- Status: Proposed
+- Status: Superseded por ADR 0002
 - Data: 2026-10-14
 
 ## Contexto
@@ -34,6 +34,12 @@ escolher prematuramente provedores externos ou o mecanismo definitivo de propaga
 - O BFF continua dependente de Redis e Keycloak externos.
 - Uma única instância é suficiente apenas para a prova de conceito.
 - A adoção definitiva exige os critérios documentados em `docs/deployment/README.md`.
+
+## Resultado
+
+A publicação foi interrompida antes da validação remota porque Cloudflare Containers exige o plano
+Workers Paid. Para preservar o requisito de custo zero do MVP, a proposta foi substituída pela
+ADR 0002. Os artefatos específicos do runtime Cloudflare foram removidos do código ativo.
 
 ## Alternativas consideradas
 
