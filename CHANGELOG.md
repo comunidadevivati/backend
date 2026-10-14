@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/comunidadevivati/backend/compare/backend-v0.2.1...backend-v0.3.0) (2026-10-14)
+
+
+### ✨ Funcionalidades
+
+* **backend:** ✨ entrega sessão segura e PoC Cloudflare Containers ([#11](https://github.com/comunidadevivati/backend/issues/11)) ([c40d8b2](https://github.com/comunidadevivati/backend/commit/c40d8b253f94120ddbd1a9a87bc882126ca48438))
+
 ## [0.2.1](https://github.com/comunidadevivati/backend/compare/backend-v0.2.0...backend-v0.2.1) (2026-10-11)
 
 
