@@ -12,7 +12,7 @@
     "lint": "oxlint src && eslint src",
     "lint:fix": "oxlint --fix src && eslint src --fix",
     "typecheck": "tsc --project tsconfig.json --noEmit",
-    "test": "vitest run --project unit",
+    "test": "vitest run --project unit --coverage",
     "test:watch": "vitest --project unit",
     "test:coverage": "vitest run --project unit --coverage",
     "test:integration": "vitest run --project integration",
@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@nestjs/testing": "^12.1.2",
-    "@vitest/coverage-v8": "5.0.3",
+    "@vitest/coverage-v8": "5.0.4",
     "tsx": "^4.23.15"
   },
   "engines": {

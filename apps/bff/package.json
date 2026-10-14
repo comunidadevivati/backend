@@ -11,7 +11,7 @@
     "start": "node dist/main.js",
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
-    "test": "vitest run --project unit",
+    "test": "vitest run --project unit --coverage",
     "test:watch": "vitest --project unit",
     "test:coverage": "vitest run --project unit --coverage",
     "test:integration": "vitest run --project integration --passWithNoTests",
@@ -32,9 +32,9 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "5.0.3",
+    "@vitest/coverage-v8": "5.0.4",
     "tsx": "^4.23.15",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.4"
   },
   "engines": {
     "node": ">=24.0.0 <25.0.0",
