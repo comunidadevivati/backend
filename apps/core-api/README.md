@@ -222,12 +222,11 @@ A extração para serviços independentes somente ocorrerá mediante justificati
 
 Toda decisão arquitetural relevante deverá ser registrada em docs/adr/.
 
-## 16. Prova de conceito Cloudflare
+## 16. Deploy de MVP e homologação
 
-A Core API possui empacotamento OCI e um Worker roteador independente em `Dockerfile`,
-`wrangler.jsonc` e `cloudflare/worker.ts`. O Container expõe a porta `3001`, e o Worker verifica
-`/api/v1/health` antes de encaminhar tráfego.
+A Core API possui empacotamento OCI em `Dockerfile` e é publicada como serviço web gratuito pelo
+Blueprint `../../render.yaml`. O Container usa a porta `10000` e expõe o health check
+`/api/v1/health`.
 
-Esse suporte torna o artefato implantável para a prova de conceito, mas não aprova definitivamente
-Cloudflare Containers para produção. O procedimento e os critérios restantes estão documentados
-em `../../docs/deployment/README.md`.
+O plano gratuito aceita cold starts e não possui SLA de produção. O procedimento operacional está
+documentado em `../../docs/deployment/README.md`.

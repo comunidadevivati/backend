@@ -256,7 +256,9 @@ Alertas deverão considerar falhas persistentes e atrasos relevantes.
 
 ## 17. Infraestrutura e deploy
 
-O Worker será executado continuamente em infraestrutura complementar à Cloudflare.
+O Worker exige infraestrutura de execução contínua. Seu deploy remoto está postergado durante a
+fase de MVP e homologação com custo zero, porque os serviços web gratuitos adotados dormem por
+inatividade e não sustentam com segurança o consumidor BullMQ.
 
 Requisitos:
 
@@ -275,7 +277,8 @@ CI/CD:
 - GHCR.
 - Imagens versionadas e promovidas por digest.
 
-A infraestrutura complementar definitiva ainda será escolhida.
+A infraestrutura contínua definitiva ainda será escolhida. Não simular produção com timers ou
+polling em serviços serverless que possam ser suspensos.
 
 ## 18. Testes
 

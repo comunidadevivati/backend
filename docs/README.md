@@ -79,22 +79,21 @@ Nunca documentar senhas, tokens ou segredos em texto puro.
 
 Documentação operacional:
 
-- Cloudflare-first.
+- Cloudflare Workers Static Assets para o frontend.
+- Render Free para BFF, Core API e Keycloak durante MVP e homologação.
+- Neon Free para PostgreSQL e Upstash Free para Redis durante MVP e homologação.
 - Cloudflare Workers Static Assets.
-- Cloudflare Containers.
 - Cloudflare R2.
 - GitHub Actions.
-- GHCR e Cloudflare Registry.
+- Render Blueprint conectado ao GitHub.
 - PostgreSQL e Redis gerenciados.
 - Keycloak e workers contínuos.
 - Backups e Disaster Recovery.
 - Observabilidade.
 
-Cloudflare Containers continua sujeito à prova de conceito.
-
-O procedimento executável da prova de conceito está em
-[deployment/README.md](deployment/README.md), e a decisão proposta está registrada em
-[adr/0001-cloudflare-containers-poc.md](adr/0001-cloudflare-containers-poc.md).
+O procedimento executável está em [deployment/README.md](deployment/README.md), e a decisão
+temporária para a etapa gratuita está registrada em
+[adr/0002-infraestrutura-gratuita-mvp.md](adr/0002-infraestrutura-gratuita-mvp.md).
 
 ## 7. Domains
 

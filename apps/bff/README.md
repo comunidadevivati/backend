@@ -160,16 +160,14 @@ A escolha do protocolo principal REST/GraphQL/gRPC continua pendente.
 
 ## 11. Infraestrutura
 
-Hospedagem preferencial:
+Hospedagem de MVP e homologação:
 
-- Cloudflare Containers.
+- Render Free, por meio do Blueprint `../../render.yaml`.
 
-A utilização definitiva depende de prova de conceito.
-
-Os artefatos da prova de conceito ficam em `Dockerfile`, `wrangler.jsonc` e
-`cloudflare/worker.ts`. O processo Node escuta em todas as interfaces dentro do Container e recebe
-as configurações sensíveis exclusivamente por secrets do Worker. O procedimento operacional está
-em `../../docs/deployment/README.md`.
+O processo Node escuta em todas as interfaces dentro do Container. Os segredos são cadastrados no
+Dashboard do Render durante a criação do Blueprint e não pertencem ao repositório. O frontend
+permanece na Cloudflare e encaminha `/auth/*` ao BFF, preservando a sessão na mesma origem. O
+procedimento operacional está em `../../docs/deployment/README.md`.
 
 O BFF deve:
 

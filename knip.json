@@ -6,7 +6,7 @@
     },
     "apps/*": {
       "entry": ["src/**/*.spec.ts", "test/**/*.ts"],
-      "project": ["src/**/*.ts", "test/**/*.ts", "cloudflare/**/*.ts", "*.config.ts"]
+      "project": ["src/**/*.ts", "test/**/*.ts", "*.config.ts"]
     }
   },
   "ignoreBinaries": ["dot", "gitleaks"]

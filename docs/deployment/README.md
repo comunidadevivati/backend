@@ -1,153 +1,191 @@
-# Deploy do Backend na Cloudflare
+# Deploy gratuito do backend para MVP e homologação
 
 ## 1. Escopo
 
-Este documento descreve a prova de conceito de publicação do BFF e da Core API em Cloudflare
-Containers. Cada aplicação possui imagem, Worker roteador, configuração Wrangler e ciclo de deploy
-independentes.
+Esta topologia mantém custo mensal zero enquanto o uso permanecer dentro das cotas gratuitas:
 
-O Worker BullMQ, PostgreSQL, Redis e Keycloak não fazem parte desses Containers:
+- frontend: Cloudflare Workers Static Assets;
+- Core API, BFF e Keycloak: serviços web gratuitos no Render;
+- PostgreSQL do Keycloak: Neon Free;
+- sessões do BFF: Upstash Redis Free;
+- CI: GitHub Actions;
+- deploy: Render Blueprint conectado à branch `main` após os checks do CI.
 
-- PostgreSQL e Redis devem ser serviços gerenciados externos, acessíveis com TLS.
-- Keycloak deve executar em runtime contínuo externo e expor um issuer HTTPS.
-- O Worker BullMQ deve executar em infraestrutura contínua complementar à Cloudflare.
-- Dados persistentes não devem ser gravados no filesystem efêmero dos Containers.
+Os serviços gratuitos possuem cold start, limites de uso e ausência de SLA. Esta configuração é
+destinada somente a MVP e homologação, não a produção.
 
-## 2. Topologia da prova de conceito
+## 2. Topologia
 
 ```text
-Frontend web
+Navegador
     |
     v
-Worker comvivati-bff
-    |
-    v
-BFF Container :3000 ----> Keycloak HTTPS
-    |                    -> Redis TLS
-    v
-Worker comvivati-core-api
-    |
-    v
-Core API Container :3001
+Frontend Cloudflare ── /auth/* ──> BFF Render ──> Keycloak Render
+                                      |       |              |
+                                      v       v              v
+                               Core API   Upstash Redis   Neon PostgreSQL
 ```
 
-A comunicação definitiva BFF → Core API e o provedor de cada serviço externo continuam decisões
-arquiteturais pendentes. A prova de conceito não deve estabelecer esses contratos por conveniência.
+O frontend chama `/auth/*` na própria origem. Seu Worker encaminha essas rotas à origem pública do
+BFF definida no secret `BFF_ORIGIN`. Isso permite que o navegador receba o cookie HttpOnly na
+origem do frontend, sem expor tokens OIDC ao JavaScript.
+
+O Worker BullMQ não faz parte desta implantação. Ele exige execução contínua e permanece postergado
+até existir uma alternativa compatível com o requisito de custo zero ou uma nova decisão
+arquitetural.
 
 ## 3. Artefatos
 
-| Aplicação | Imagem                     | Worker                               | Configuração                   |
-| --------- | -------------------------- | ------------------------------------ | ------------------------------ |
-| BFF       | `apps/bff/Dockerfile`      | `apps/bff/cloudflare/worker.ts`      | `apps/bff/wrangler.jsonc`      |
-| Core API  | `apps/core-api/Dockerfile` | `apps/core-api/cloudflare/worker.ts` | `apps/core-api/wrangler.jsonc` |
+| Componente | Artefato                     |
+| ---------- | ---------------------------- |
+| Blueprint  | `render.yaml`                |
+| BFF        | `apps/bff/Dockerfile`        |
+| Core API   | `apps/core-api/Dockerfile`   |
+| Keycloak   | `deploy/keycloak/Dockerfile` |
 
-As imagens usam Node.js 24, executam como usuário não privilegiado e são construídas a partir da
-raiz do monorepo. O Wrangler publica as imagens no Cloudflare Registry durante o deploy.
+Os três containers escutam na porta `10000`. O Keycloak é construído antecipadamente com suporte a
+PostgreSQL e cache local de nó único para reduzir seu tempo de inicialização e consumo de memória.
+O heap e o pool HTTP são limitados porque o serviço gratuito possui apenas 512 MB.
 
-## 4. Pré-requisitos
+## 4. Preparar PostgreSQL no Neon
 
-- plano Cloudflare Workers Paid com Containers habilitados;
-- Docker compatível ativo para deploy local, ou execução pelo GitHub Actions;
-- Node.js 24 e pnpm 12.10.1;
-- API token limitado à conta de destino, com permissões de edição de Workers Scripts e Containers;
-- `CLOUDFLARE_ACCOUNT_ID` e `CLOUDFLARE_API_TOKEN` configurados fora do repositório;
-- Redis externo com TLS;
-- Keycloak externo com HTTPS e redirect URI do BFF registrada.
+Crie um projeto gratuito dedicado ao Keycloak. Não reutilize o banco de domínio da Core API.
 
-## 5. Segredos obrigatórios do BFF
+Separe os dados da conexão fornecidos pelo Neon nos valores abaixo:
 
-O `wrangler.jsonc` exige os bindings abaixo antes do deploy:
+| Variável do Render | Valor esperado                                    |
+| ------------------ | ------------------------------------------------- |
+| `KC_DB_URL`        | `jdbc:postgresql://HOST/DATABASE?sslmode=require` |
+| `KC_DB_USERNAME`   | usuário do banco                                  |
+| `KC_DB_PASSWORD`   | senha do banco                                    |
 
-| Nome                     | Conteúdo                                            |
-| ------------------------ | --------------------------------------------------- |
-| `BFF_BASE_URL`           | URL pública HTTPS do BFF                            |
-| `BFF_OIDC_CALLBACK_URL`  | URL pública terminada em `/auth/callback`           |
-| `WEB_BASE_URL`           | Origem HTTPS exata do frontend                      |
-| `KEYCLOAK_ISSUER`        | Issuer HTTPS do realm                               |
-| `KEYCLOAK_CLIENT_ID`     | Client ID do BFF                                    |
-| `KEYCLOAK_CLIENT_SECRET` | Segredo do cliente confidencial                     |
-| `COOKIE_SECRET`          | Valor aleatório com no mínimo 32 caracteres         |
-| `SESSION_ENCRYPTION_KEY` | Chave Base64URL de 32 bytes, com 43 caracteres      |
-| `REDIS_URL`              | URL do Redis externo, preferencialmente `rediss://` |
+Use o endpoint com pooling quando ele estiver disponível e limite o pool do Keycloak. O Blueprint
+configura no máximo cinco conexões. Nunca adicione a URL ou as credenciais ao Git.
 
-Os valores podem ser cadastrados interativamente com `wrangler secret put` ou em lote com
-`wrangler secret bulk`. Arquivos contendo os valores não devem ser adicionados ao Git.
+## 5. Preparar Redis no Upstash
 
-Exemplo de comando individual:
-
-```bash
-pnpm exec wrangler secret put COOKIE_SECRET --config apps/bff/wrangler.jsonc
-```
-
-## 6. Validação local
-
-Instale as dependências e valide tipos, configurações e bundles:
-
-```bash
-pnpm install --frozen-lockfile
-pnpm run cloudflare:typecheck
-pnpm run cloudflare:check
-```
-
-Com Docker ativo, valide as duas imagens:
-
-```bash
-pnpm run container:build
-```
-
-O `cloudflare:check` usa `--containers-rollout=none`: ele valida e empacota os Workers, mas não
-constrói nem publica imagens. A construção OCI é validada separadamente pelo comando acima e pelo
-job `Container Images` do CI.
-
-## 7. Publicação manual
-
-Autentique o Wrangler e publique primeiro a Core API:
-
-```bash
-pnpm exec wrangler login
-pnpm run cloudflare:deploy:core-api
-```
-
-Depois de cadastrar todos os secrets do BFF:
-
-```bash
-pnpm run cloudflare:deploy:bff
-```
-
-O primeiro provisionamento pode levar alguns minutos. Confirme os endpoints:
+Crie um banco Redis gratuito e copie a URL TLS nativa no formato:
 
 ```text
-https://comvivati-core-api.<workers-subdomain>.workers.dev/api/v1/health
-https://comvivati-bff.<workers-subdomain>.workers.dev/health
+rediss://default:TOKEN@HOST:6379
 ```
 
-Antes de validar o login, atualize no Keycloak a redirect URI exata informada em
-`BFF_OIDC_CALLBACK_URL`.
+Esse valor será o secret `REDIS_URL` do BFF no Render. A cota gratuita é compartilhada entre
+sessões e qualquer uso futuro; o Worker BullMQ não deve ser iniciado nesta etapa porque seu polling
+contínuo consumiria a cota rapidamente.
 
-## 8. Publicação pelo GitHub Actions
+## 6. Criar o Blueprint no Render
 
-Crie o environment protegido `cloudflare` no GitHub e adicione:
+Antes de criar o Blueprint, Neon e Upstash devem estar provisionados.
 
-- `CLOUDFLARE_ACCOUNT_ID`;
-- `CLOUDFLARE_API_TOKEN`.
+1. No Render, escolha **New > Blueprint**.
+2. Conecte `https://github.com/comunidadevivati/backend`.
+3. Selecione a branch `main` e o arquivo `render.yaml`.
+4. Mantenha o plano `free` dos três serviços.
+5. Informe os valores solicitados com `sync: false`.
 
-Os secrets de runtime do BFF permanecem no Cloudflare, não no workflow. Execute manualmente o
-workflow `Deploy Cloudflare Backend` e escolha `core-api` ou `bff`. Recomenda-se exigir aprovação do
-environment antes de cada publicação.
+### Segredos solicitados
 
-## 9. Critérios para concluir a prova de conceito
+| Serviço  | Variável                      | Conteúdo                             |
+| -------- | ----------------------------- | ------------------------------------ |
+| Keycloak | `KC_DB_URL`                   | JDBC URL do Neon                     |
+| Keycloak | `KC_DB_USERNAME`              | usuário do Neon                      |
+| Keycloak | `KC_DB_PASSWORD`              | senha do Neon                        |
+| Keycloak | `KC_BOOTSTRAP_ADMIN_PASSWORD` | senha administrativa aleatória       |
+| BFF      | `KEYCLOAK_CLIENT_SECRET`      | segredo do client criado no Keycloak |
+| BFF      | `SESSION_ENCRYPTION_KEY`      | chave Base64URL de 32 bytes          |
+| BFF      | `REDIS_URL`                   | URL TLS nativa do Upstash            |
 
-- build Linux/AMD64 das duas imagens concluído;
-- health checks públicos respondendo após cold start;
-- login completo frontend → BFF → Keycloak → BFF → frontend;
-- sessão criada e recuperada no Redis externo;
-- logout com CSRF removendo sessão e cookie;
-- comunicação BFF → Core API definida e validada sem headers de identidade arbitrários;
-- logs sem tokens, cookies ou segredos;
-- encerramento gracioso durante rollout;
-- medição de cold start, latência e custo;
-- teste de falha e recuperação de Redis e Keycloak;
-- definição de capacidade e estratégia de múltiplas instâncias.
+Gere os valores aleatórios localmente:
 
-Até esses itens serem comprovados em ambiente remoto, o status permanece “PoC implantável”, não
-“compatibilidade de produção aprovada”.
+```bash
+node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
+```
+
+Use uma execução para `SESSION_ENCRYPTION_KEY` e outra para a senha administrativa. O
+`COOKIE_SECRET` é gerado pelo próprio Render.
+
+O primeiro deploy do BFF pode falhar enquanto o Keycloak ainda estiver inicializando. Aguarde o
+health check do Keycloak ficar verde e execute **Manual Deploy > Deploy latest commit** no BFF.
+
+## 7. Configurar o Keycloak
+
+Acesse `https://comvivati-keycloak.onrender.com/admin` com o administrador criado no Blueprint.
+
+1. Crie o realm `comunidade-viva`.
+2. Crie o client confidencial `comvivati-bff`.
+3. Habilite Authorization Code/Standard Flow.
+4. Cadastre a redirect URI exata:
+   `https://comunidade-viva-web.comvivati.workers.dev/auth/callback`.
+5. Cadastre a web origin exata:
+   `https://comunidade-viva-web.comvivati.workers.dev`.
+6. Copie o client secret para `KEYCLOAK_CLIENT_SECRET` no BFF.
+7. Reimplante o BFF.
+
+O issuer esperado é:
+
+```text
+https://comvivati-keycloak.onrender.com/realms/comunidade-viva
+```
+
+## 8. Conectar o frontend ao BFF
+
+No projeto Cloudflare do frontend, cadastre o secret:
+
+```text
+BFF_ORIGIN=https://comvivati-bff.onrender.com
+```
+
+Depois, reimplante o frontend. Não coloque esse valor em uma variável `VITE_*`; o proxy é executado
+no Worker e a aplicação continua consumindo caminhos relativos na mesma origem.
+
+As três variáveis públicas do BFF permanecem com a origem do frontend:
+
+```text
+BFF_BASE_URL=https://comunidade-viva-web.comvivati.workers.dev
+BFF_OIDC_CALLBACK_URL=https://comunidade-viva-web.comvivati.workers.dev/auth/callback
+WEB_BASE_URL=https://comunidade-viva-web.comvivati.workers.dev
+```
+
+## 9. Deploy automático
+
+Cada serviço do Blueprint usa:
+
+```yaml
+branch: main
+autoDeployTrigger: checksPass
+```
+
+Após um merge na `main`, o Render aguarda os checks do GitHub e publica os serviços afetados. O
+Blueprint também é sincronizado quando `render.yaml` muda.
+
+## 10. Validação
+
+Valide primeiro os endpoints públicos:
+
+```text
+https://comvivati-core-api.onrender.com/api/v1/health
+https://comvivati-bff.onrender.com/health
+https://comvivati-keycloak.onrender.com/realms/comunidade-viva/.well-known/openid-configuration
+```
+
+Depois valide o fluxo real:
+
+1. Abra o frontend em uma janela anônima.
+2. Acesse `/login` e inicie a autenticação.
+3. Confirme o redirecionamento ao Keycloak e o retorno por `/auth/callback`.
+4. Confirme que `/auth/me` retorna a sessão sem expor tokens.
+5. Execute logout e confirme remoção da sessão no Redis e do cookie no navegador.
+
+Não considere a integração comprovada apenas com health checks ou testes unitários.
+
+## 11. Limites conhecidos
+
+- Serviços Render Free dormem após inatividade e podem demorar para responder no primeiro acesso.
+- A franquia de horas é compartilhada pelos serviços gratuitos do workspace.
+- O plano gratuito não oferece SLA adequado à produção.
+- Os 512 MB do Render Free ficam abaixo do mínimo de 750 MB recomendado pelo Keycloak. Mesmo com
+  heap e threads reduzidos, o serviço pode ser encerrado por falta de memória.
+- Atingir cotas pode suspender serviços ou bloquear comandos até o próximo ciclo.
+- Alterações no nome público de qualquer serviço exigem atualizar URLs do BFF, Keycloak e frontend.
+- O deploy do Worker BullMQ continua pendente.
