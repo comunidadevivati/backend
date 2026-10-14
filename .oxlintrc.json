@@ -17,6 +17,7 @@
     "**/dist/**",
     "**/build/**",
     "**/coverage/**",
+    "**/.wrangler-dist/**",
     "**/.turbo/**",
     "**/*.tsbuildinfo"
   ],
@@ -51,6 +52,12 @@
   "overrides": [
     {
       "files": ["**/*.config.ts", "**/*.config.js", "**/*.config.mjs"],
+      "rules": {
+        "import/no-default-export": "off"
+      }
+    },
+    {
+      "files": ["**/cloudflare/worker.ts"],
       "rules": {
         "import/no-default-export": "off"
       }

@@ -77,6 +77,18 @@ Fluxo:
 
 O navegador não deve armazenar tokens OIDC em localStorage ou sessionStorage.
 
+### Contrato web implementado
+
+- `GET /auth/login`: inicia o Authorization Code Flow com PKCE.
+- `GET /auth/callback`: valida a transação OIDC, cria a sessão e redireciona para
+  `/dashboard` na aplicação web.
+- `GET /auth/me`: retorna somente os dados públicos da sessão, incluindo o token CSRF que deve
+  permanecer apenas em memória no frontend.
+- `POST /auth/logout`: exige o header `X-CSRF-Token`, revoga a sessão no Redis e remove o cookie.
+
+O BFF aceita requisições com credenciais somente da origem definida em `WEB_BASE_URL`. Access
+tokens, refresh tokens e ID tokens permanecem na sessão criptografada no servidor.
+
 ## 6. Sessões
 
 Requisitos:
@@ -153,6 +165,11 @@ Hospedagem preferencial:
 - Cloudflare Containers.
 
 A utilização definitiva depende de prova de conceito.
+
+Os artefatos da prova de conceito ficam em `Dockerfile`, `wrangler.jsonc` e
+`cloudflare/worker.ts`. O processo Node escuta em todas as interfaces dentro do Container e recebe
+as configurações sensíveis exclusivamente por secrets do Worker. O procedimento operacional está
+em `../../docs/deployment/README.md`.
 
 O BFF deve:
 

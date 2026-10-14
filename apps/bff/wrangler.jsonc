@@ -1,0 +1,50 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "comvivati-bff",
+  "main": "cloudflare/worker.ts",
+  "compatibility_date": "2026-10-14",
+  "upload_source_maps": true,
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+  },
+  "containers": [
+    {
+      "name": "comvivati-bff",
+      "class_name": "BffContainer",
+      "scheduling_policy": "default",
+      "image": "./Dockerfile",
+      "image_build_context": "../..",
+      "instance_type": "basic",
+      "max_instances": 1,
+    },
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "BFF_CONTAINER",
+        "class_name": "BffContainer",
+      },
+    ],
+  },
+  "exports": {
+    "BffContainer": {
+      "type": "durable-object",
+      "storage": "sqlite",
+      "container": "comvivati-bff",
+    },
+  },
+  "secrets": {
+    "required": [
+      "BFF_BASE_URL",
+      "BFF_OIDC_CALLBACK_URL",
+      "WEB_BASE_URL",
+      "KEYCLOAK_ISSUER",
+      "KEYCLOAK_CLIENT_ID",
+      "KEYCLOAK_CLIENT_SECRET",
+      "COOKIE_SECRET",
+      "SESSION_ENCRYPTION_KEY",
+      "REDIS_URL",
+    ],
+  },
+}

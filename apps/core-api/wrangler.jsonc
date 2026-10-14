@@ -1,0 +1,37 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "comvivati-core-api",
+  "main": "cloudflare/worker.ts",
+  "compatibility_date": "2026-10-14",
+  "upload_source_maps": true,
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+  },
+  "containers": [
+    {
+      "name": "comvivati-core-api",
+      "class_name": "CoreApiContainer",
+      "scheduling_policy": "default",
+      "image": "./Dockerfile",
+      "image_build_context": "../..",
+      "instance_type": "basic",
+      "max_instances": 1,
+    },
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "CORE_API_CONTAINER",
+        "class_name": "CoreApiContainer",
+      },
+    ],
+  },
+  "exports": {
+    "CoreApiContainer": {
+      "type": "durable-object",
+      "storage": "sqlite",
+      "container": "comvivati-core-api",
+    },
+  },
+}

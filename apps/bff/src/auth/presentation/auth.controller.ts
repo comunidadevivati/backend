@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { BadRequestException, Controller, Get, Inject, Req, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -102,7 +103,9 @@ export class AuthController {
 
     const webUrl = this.configService.getOrThrow<string>('WEB_BASE_URL');
 
-    reply.code(302).redirect(webUrl);
+    const dashboardUrl = new URL('/dashboard', webUrl);
+
+    reply.code(302).redirect(dashboardUrl.href);
   }
 
   private validateCallbackUrl(request: FastifyRequest): URL {
@@ -145,6 +148,9 @@ export class AuthController {
 
     return this.sessionService.createSession({
       subject: claims.sub,
+      ...(typeof claims['email'] === 'string' ? { email: claims['email'] } : {}),
+      ...(typeof claims['name'] === 'string' ? { name: claims['name'] } : {}),
+      csrfToken: randomBytes(32).toString('base64url'),
       accessToken: tokens.access_token,
       ...(tokens.refresh_token ? { refreshToken: tokens.refresh_token } : {}),
       ...(tokens.id_token ? { idToken: tokens.id_token } : {}),

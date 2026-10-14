@@ -9,6 +9,7 @@ export default [
       '**/dist/**',
       '**/build/**',
       '**/coverage/**',
+      '**/.wrangler-dist/**',
       '**/.turbo/**',
       '**/*.tsbuildinfo',
     ],
@@ -64,6 +65,12 @@ export default [
           next: 'import',
         },
       ],
+    },
+  },
+  {
+    files: ['**/cloudflare/worker.ts'],
+    rules: {
+      'import/no-default-export': 'off',
     },
   },
 ];

@@ -12,13 +12,17 @@
     "lint": "oxlint src && eslint src",
     "lint:fix": "oxlint --fix src && eslint src --fix",
     "typecheck": "tsc --project tsconfig.json --noEmit",
-    "test": "vitest run --project unit",
+    "test": "vitest run --project unit --coverage",
     "test:watch": "vitest --project unit",
     "test:coverage": "vitest run --project unit --coverage",
     "test:integration": "vitest run --project integration",
     "test:e2e": "vitest run --project e2e --passWithNoTests",
     "test:architecture": "vitest run --project architecture --passWithNoTests",
-    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\""
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "cloudflare:typecheck": "tsc --project tsconfig.cloudflare.json --noEmit",
+    "cloudflare:check": "wrangler deploy --config wrangler.jsonc --dry-run --containers-rollout=none --outdir .wrangler-dist",
+    "cloudflare:deploy": "wrangler deploy --config wrangler.jsonc",
+    "container:build": "docker build --file Dockerfile --tag comvivati/core-api:local ../.."
   },
   "dependencies": {
     "@nestjs/common": "^12.1.2",
@@ -28,8 +32,10 @@
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
+    "@cloudflare/containers": "0.3.7",
+    "@cloudflare/workers-types": "5.20261014.1",
     "@nestjs/testing": "^12.1.2",
-    "@vitest/coverage-v8": "5.0.3",
+    "@vitest/coverage-v8": "5.0.4",
     "tsx": "^4.23.15"
   },
   "engines": {
