@@ -5,6 +5,8 @@ FROM quay.io/keycloak/keycloak:26.8.0 AS build
 ENV KC_DB=postgres
 ENV KC_HEALTH_ENABLED=true
 
+COPY --chown=keycloak:keycloak deploy/keycloak/themes/ /opt/keycloak/themes/
+
 RUN /opt/keycloak/bin/kc.sh build
 
 FROM quay.io/keycloak/keycloak:26.8.0
