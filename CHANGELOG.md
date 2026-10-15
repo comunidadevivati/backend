@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/comunidadevivati/backend/compare/backend-v0.3.2...backend-v0.4.0) (2026-10-15)
+
+
+### ✨ Funcionalidades
+
+* **keycloak:** ✨ adiciona tema visual da Comunidade Viva ([cc91554](https://github.com/comunidadevivati/backend/commit/cc9155455afa5184bf3faa44daa054047a3ea013))
+
 ## [0.3.2](https://github.com/comunidadevivati/backend/compare/backend-v0.3.1...backend-v0.3.2) (2026-10-15)
 
 
