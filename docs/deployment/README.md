@@ -42,6 +42,7 @@ arquitetural.
 | BFF        | `apps/bff/Dockerfile`        |
 | Core API   | `apps/core-api/Dockerfile`   |
 | Keycloak   | `deploy/keycloak/Dockerfile` |
+| Tema OIDC  | `deploy/keycloak/themes`     |
 
 Os três containers escutam na porta `10000`. O Keycloak é construído antecipadamente com suporte a
 PostgreSQL e cache local de nó único para reduzir seu tempo de inicialização e consumo de memória.
@@ -121,6 +122,9 @@ Acesse `https://comvivati-keycloak.onrender.com/admin` com o administrador criad
    `https://comunidade-viva-web.comvivati.workers.dev`.
 6. Copie o client secret para `KEYCLOAK_CLIENT_SECRET` no BFF.
 7. Reimplante o BFF.
+8. Após o deploy da imagem que contém o tema, acesse **Realm settings > Themes**, selecione
+   `comvivati` em **Login theme** e salve. O formulário continua sendo servido com segurança pelo
+   Keycloak, mas preserva a identidade visual da aplicação.
 
 O issuer esperado é:
 

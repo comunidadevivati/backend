@@ -1,0 +1,176 @@
+:root {
+  --comvivati-teal-300: #5eead4;
+  --comvivati-teal-400: #2dd4bf;
+  --comvivati-teal-500: #14b8a6;
+  --comvivati-teal-700: #0f766e;
+  --comvivati-teal-800: #115e59;
+  --comvivati-teal-900: #134e4a;
+  --comvivati-teal-950: #042f2e;
+}
+
+body,
+.login-pf,
+.login-pf body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 18%, rgb(20 184 166 / 32%), transparent 34%),
+    radial-gradient(circle at 88% 82%, rgb(45 212 191 / 14%), transparent 30%),
+    linear-gradient(135deg, var(--comvivati-teal-500), var(--comvivati-teal-950) 72%);
+  color: #f0fdfa;
+  font-family: Roboto, Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.pf-v5-c-login,
+.pf-c-login {
+  min-height: 100vh;
+  background: transparent;
+}
+
+.pf-v5-c-login__container,
+.pf-c-login__container {
+  align-items: center;
+  grid-template-areas: 'header main';
+  grid-template-columns: minmax(20rem, 1fr) minmax(22rem, 30rem);
+  gap: clamp(3rem, 9vw, 10rem);
+  width: min(92vw, 90rem);
+  margin: 0 auto;
+  padding: 3rem 0;
+}
+
+.pf-v5-c-login__header,
+.pf-c-login__header {
+  align-self: center;
+  margin: 0;
+}
+
+#kc-header-wrapper {
+  width: min(100%, 34rem);
+  height: 10rem;
+  overflow: hidden;
+  color: transparent;
+  text-indent: -9999px;
+  background: url('../img/logo-comvivati.svg') left center / contain no-repeat;
+}
+
+.pf-v5-c-login__main,
+.pf-c-login__main {
+  width: 100%;
+  border: 1px solid rgb(94 234 212 / 24%);
+  border-radius: 1.5rem;
+  background: rgb(4 47 46 / 84%);
+  box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 28%);
+  backdrop-filter: blur(18px);
+}
+
+.pf-v5-c-login__main-header,
+.pf-v5-c-login__main-body,
+.pf-v5-c-login__main-footer,
+.pf-c-login__main-header,
+.pf-c-login__main-body,
+.pf-c-login__main-footer {
+  padding-right: clamp(1.5rem, 4vw, 3rem);
+  padding-left: clamp(1.5rem, 4vw, 3rem);
+}
+
+.pf-v5-c-title,
+.pf-c-title,
+#kc-page-title {
+  color: #f0fdfa;
+  font-weight: 700;
+}
+
+label,
+.pf-v5-c-form__label-text,
+.pf-c-form__label-text,
+.instruction,
+#kc-info-wrapper,
+#kc-registration {
+  color: #ccfbf1;
+}
+
+a {
+  color: var(--comvivati-teal-300);
+}
+
+a:hover,
+a:focus-visible {
+  color: #ffffff;
+}
+
+.pf-v5-c-form-control,
+.pf-c-form-control,
+input[type='text'],
+input[type='email'],
+input[type='password'] {
+  border-color: rgb(94 234 212 / 34%);
+  border-radius: 0.65rem;
+  background: rgb(19 78 74 / 78%);
+  color: #ffffff;
+}
+
+.pf-v5-c-form-control:focus,
+.pf-c-form-control:focus,
+input:focus-visible {
+  border-color: var(--comvivati-teal-300);
+  outline: 2px solid rgb(94 234 212 / 40%);
+  outline-offset: 2px;
+}
+
+.pf-v5-c-button.pf-m-primary,
+.pf-c-button.pf-m-primary,
+#kc-login {
+  min-height: 2.9rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: var(--comvivati-teal-500);
+  color: var(--comvivati-teal-950);
+  font-weight: 700;
+}
+
+.pf-v5-c-button.pf-m-primary:hover,
+.pf-v5-c-button.pf-m-primary:focus-visible,
+.pf-c-button.pf-m-primary:hover,
+.pf-c-button.pf-m-primary:focus-visible,
+#kc-login:hover,
+#kc-login:focus-visible {
+  background: var(--comvivati-teal-300);
+}
+
+.pf-v5-c-alert,
+.pf-c-alert {
+  border-radius: 0.75rem;
+}
+
+@media (max-width: 767px) {
+  .pf-v5-c-login__container,
+  .pf-c-login__container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    width: min(92vw, 32rem);
+    padding: 2rem 0;
+  }
+
+  .pf-v5-c-login__header,
+  .pf-c-login__header {
+    width: 100%;
+  }
+
+  #kc-header-wrapper {
+    width: min(100%, 24rem);
+    height: 7rem;
+    margin: 0 auto;
+    background-position: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
