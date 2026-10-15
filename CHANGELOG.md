@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/comunidadevivati/backend/compare/backend-v0.3.1...backend-v0.3.2) (2026-10-15)
+
+
+### 🐛 Correções
+
+* **render:** 🐛 corrige parâmetros de memória do Keycloak ([#15](https://github.com/comunidadevivati/backend/issues/15)) ([42729fe](https://github.com/comunidadevivati/backend/commit/42729fe4cddead08081f35290838205f8a4c7397))
+
 ## [0.3.1](https://github.com/comunidadevivati/backend/compare/backend-v0.3.0...backend-v0.3.1) (2026-10-14)
 
 
