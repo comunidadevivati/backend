@@ -18,7 +18,7 @@ ENV KC_HTTP_ENABLED=true
 ENV KC_HTTP_PORT=10000
 ENV KC_PROXY_HEADERS=xforwarded
 ENV KC_HTTP_POOL_MAX_THREADS=20
-ENV JAVA_OPTS_KC_HEAP="-XX:InitialRAMPercentage=20 -XX:MaxRAMPercentage=45 -XX:MaxHeapFreeRatio=30 -XX:+ExitOnOutOfMemoryError"
+ENV JAVA_OPTS_KC_HEAP="-XX:InitialRAMPercentage=20 -XX:MaxRAMPercentage=45 -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=30 -XX:+ExitOnOutOfMemoryError"
 
 EXPOSE 10000
 
