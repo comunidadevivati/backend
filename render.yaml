@@ -91,4 +91,4 @@ services:
       - key: KC_HTTP_POOL_MAX_THREADS
         value: '20'
       - key: JAVA_OPTS_KC_HEAP
-        value: -XX:InitialRAMPercentage=20 -XX:MaxRAMPercentage=45 -XX:MaxHeapFreeRatio=30 -XX:+ExitOnOutOfMemoryError
+        value: -XX:InitialRAMPercentage=20 -XX:MaxRAMPercentage=45 -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=30 -XX:+ExitOnOutOfMemoryError
