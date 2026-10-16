@@ -17,7 +17,7 @@ Backend for Frontend destinado à aplicação web.
 Responsabilidades:
 
 - Gerenciar sessões web seguras.
-- Integrar autenticação OIDC com Keycloak.
+- Autenticar usuários por e-mail e senha (ADR 0003).
 - Utilizar cookies HttpOnly.
 - Adaptar e agregar respostas para o frontend.
 - Comunicar-se com a Core API através de contratos.
@@ -58,7 +58,8 @@ Responsabilidades:
 
 ### worker/
 
-Aplicação de processamento assíncrono baseada em Node.js e BullMQ.
+Aplicação de processamento assíncrono baseada em Node.js. A tecnologia de filas será redefinida
+(BullMQ/Redis removidos pelo ADR 0003).
 
 Responsabilidades:
 

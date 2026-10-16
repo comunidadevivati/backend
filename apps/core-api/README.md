@@ -172,8 +172,7 @@ A direção arquitetural é sempre das camadas externas para as abstrações int
 
 ## 11. Segurança
 
-- Keycloak como Identity Provider.
-- OIDC para autenticação.
+- Autenticação por e-mail e senha no BFF (ADR 0003); identidade propagada à Core API ainda pendente.
 - RBAC + ABAC + ReBAC para autorização.
 - Deny by default.
 - Explicit deny prevalece.
