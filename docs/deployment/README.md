@@ -70,7 +70,8 @@ pode ser excluído.
 
 ## 6. Criar usuários
 
-Não há cadastro público. Crie cada usuário a partir de uma máquina com acesso ao banco:
+Pessoas podem se cadastrar pela tela "Criar conta" do frontend (`POST /auth/register`). Para
+criar usuários administrativamente, use o CLI a partir de uma máquina com acesso ao banco:
 
 ```bash
 DATABASE_URL='<connection string do Neon>' \
@@ -136,5 +137,6 @@ Não considere a integração comprovada apenas com health checks ou testes unit
 - A franquia de horas é compartilhada pelos serviços gratuitos do workspace.
 - O plano gratuito não oferece SLA adequado à produção.
 - Atingir cotas pode suspender serviços ou bloquear comandos até o próximo ciclo.
-- O login ainda não possui rate limiting, bloqueio por tentativas nem recuperação de senha.
+- Login e cadastro ainda não possuem rate limiting, bloqueio por tentativas, confirmação de e-mail
+  nem recuperação de senha.
 - Alterações no nome público de qualquer serviço exigem atualizar URLs do BFF e do frontend.

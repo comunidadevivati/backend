@@ -70,6 +70,26 @@ describe('UserRepository', () => {
   });
 });
 
+describe('UserRepository.create', () => {
+  it('deve gravar o telefone informado no cadastro', async () => {
+    const { calls, db } = createDatabaseMock();
+
+    const repository = new UserRepository({ db } as DatabaseService);
+
+    const id = await repository.create({
+      email: 'pessoa@exemplo.com',
+      name: 'Pessoa Exemplo',
+      passwordHash: 'scrypt$hash',
+      phone: '67991234567',
+    });
+
+    expect(calls.find(({ method }) => method === 'values')?.args[0]).toMatchObject({
+      id,
+      phone: '67991234567',
+    });
+  });
+});
+
 describe('insertUser', () => {
   it('deve gravar o usuário normalizado com identificador UUIDv7', async () => {
     const { calls, db } = createDatabaseMock();

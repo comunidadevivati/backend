@@ -76,18 +76,29 @@ O navegador não armazena tokens em localStorage ou sessionStorage.
 
 ### Contrato web implementado
 
-- `POST /auth/login`: `200` com o mesmo corpo de `/auth/me` e o cookie de sessão; `400` para
+- `POST /auth/register`: `{ "name", "phone", "email", "password" }`, com telefone somente em
+  dígitos. `201` com o cookie de sessão e o mesmo formato de `/auth/login`, com a mensagem
+  `"Usuário cadastrado com sucesso."`: a conta nasce `ACTIVE` e
+  o usuário já fica autenticado (sessão criada pelo mesmo serviço do login, revogando a anterior do
+  navegador, sem consumir tentativa de login); `409` para e-mail já
+  cadastrado (comparação sem diferenciar maiúsculas); `400` com `fields` listando somente os nomes
+  dos campos recusados. As regras de nome, telefone e força de senha ficam em
+  `src/auth/domain/policies` e espelham as validações do frontend.
+- `POST /auth/login`: `200` com o cookie de sessão e
+  `{ authenticated: true, message: "Usuário autenticado com sucesso.", csrfToken, user }`; `400` para
   corpo inválido; `401` para credenciais inválidas, sem distinguir e-mail inexistente, senha
   incorreta ou usuário suspenso. Revoga a sessão anterior do mesmo navegador.
 - `GET /auth/me`: `{ authenticated, csrfToken, user: { subject, email, name } }`. O token CSRF
   deve permanecer apenas em memória no frontend. Renova a expiração por inatividade.
 - `POST /auth/logout`: exige o header `X-CSRF-Token`, revoga a sessão no banco e remove o cookie.
+  Responde `200` com `{ "authenticated": false, "message": "O logout foi efetuado com sucesso." }`.
 
 O BFF aceita requisições com credenciais somente da origem definida em `WEB_BASE_URL`.
 
 ### Usuários
 
-Não há cadastro público. Crie usuários com o CLI (a senha é solicitada sem eco no terminal):
+Além do cadastro público (`POST /auth/register`), usuários podem ser criados pelo CLI (a senha é
+solicitada sem eco no terminal):
 
 ```bash
 pnpm --dir apps/bff user:create --email pessoa@exemplo.com --name "Nome da Pessoa"

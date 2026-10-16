@@ -9,6 +9,8 @@ export const users = authSchema.table('users', {
   // Sempre normalizado (trim + minúsculas) pela aplicação antes de gravar ou consultar.
   email: text('email').notNull().unique(),
   name: text('name').notNull(),
+  // Somente dígitos (DDD + número). Opcional para contas criadas pelo CLI.
+  phone: text('phone'),
   passwordHash: text('password_hash').notNull(),
   status: userStatus('status').notNull().default('ACTIVE'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

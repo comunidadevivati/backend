@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AuthController } from './auth.controller.js';
 import type { LoginResult, LoginUseCase } from '../application/login.use-case.js';
+import type { RegisterUserUseCase } from '../application/register-user.use-case.js';
 import type { AuthSession, SessionService } from '../infrastructure/session/session.service.js';
 import type { ConfigService } from '@nestjs/config';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -69,7 +70,12 @@ const createFixture = ({
     setCookie: vi.fn(),
   } as unknown as FastifyReply;
 
-  const controller = new AuthController(loginUseCase, sessionService, configService);
+  const controller = new AuthController(
+    loginUseCase,
+    {} as RegisterUserUseCase,
+    sessionService,
+    configService,
+  );
 
   return { controller, deleteSession, execute, reply, request };
 };
@@ -100,6 +106,7 @@ describe('AuthController — login', () => {
 
     expect(response).toEqual({
       authenticated: true,
+      message: 'Usuário autenticado com sucesso.',
       csrfToken: 'novo-csrf-token',
       user: {
         subject: loginResult.user.id,
@@ -108,7 +115,9 @@ describe('AuthController — login', () => {
       },
     });
   });
+});
 
+describe('AuthController — cookie de sessão no login', () => {
   it('deve usar cookie __Host- seguro quando o BFF estiver em HTTPS', async () => {
     const { controller, reply, request } = createFixture({
       baseUrl: 'https://app.exemplo.com',
@@ -225,7 +234,10 @@ describe('AuthController — logout', () => {
       csrfToken: 'csrf-token-teste',
     });
 
-    await controller.logout(request, reply);
+    await expect(controller.logout(request, reply)).resolves.toEqual({
+      authenticated: false,
+      message: 'O logout foi efetuado com sucesso.',
+    });
 
     expect(deleteSession).toHaveBeenCalledWith('token-da-sessao');
 

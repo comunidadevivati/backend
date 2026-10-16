@@ -5,6 +5,7 @@ import { parseArgs } from 'node:util';
 import { z } from 'zod';
 import { hashPassword } from '../auth/infrastructure/password/password-hasher.js';
 import { insertUser } from '../auth/infrastructure/users/user.repository.js';
+import { isUniqueViolation } from '../shared/infrastructure/database/database-errors.js';
 import { createDatabase, runMigrations } from '../shared/infrastructure/database/database.js';
 
 /*
@@ -58,16 +59,6 @@ const askPassword = async (): Promise<string> => {
 
   return password;
 };
-
-const isUniqueViolation = (error: unknown): boolean =>
-  error instanceof Error &&
-  [error, error.cause].some(
-    (candidate) =>
-      typeof candidate === 'object' &&
-      candidate !== null &&
-      'code' in candidate &&
-      candidate.code === '23505',
-  );
 
 const main = async (): Promise<void> => {
   loadEnvFiles();

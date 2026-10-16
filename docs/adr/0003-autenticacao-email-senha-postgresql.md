@@ -25,7 +25,10 @@ e-mail e senha, usando apenas PostgreSQL.
 - Expiração por inatividade de 30 minutos, renovada a cada `GET /auth/me`, com limite absoluto de
   12 horas. Sessões vencidas são removidas a cada novo login.
 - O token CSRF continua sendo entregue por `/auth/login` e `/auth/me` e exigido em `POST /auth/logout`.
-- Usuários são criados pelo CLI `pnpm --dir apps/bff user:create`; não há cadastro público.
+- Cadastro público por `POST /auth/register` (nome, telefone, e-mail e senha), com as mesmas regras
+  de validação e força de senha do frontend; a conta nasce `ACTIVE` e o próprio BFF abre a sessão na
+  resposta do cadastro, sem uma segunda chamada de login pelo frontend.
+  O CLI `pnpm --dir apps/bff user:create` permanece para criação administrativa.
 
 ## Justificativa
 
@@ -41,8 +44,10 @@ a sessão é revogável no servidor e o frontend continua consumindo `/auth/*` n
   Core API continuam inacessíveis ao BFF.
 - O vínculo entre conta digital e Member, papéis e permissões continuam pendentes no contexto
   Identity/Authorization da Core API. A migração das credenciais para a Core API exigirá novo ADR.
-- Recuperação de senha, cadastro por convite, bloqueio por tentativas e rate limiting do login ainda
-  não estão implementados e devem ser tratados antes de produção.
+- Qualquer pessoa pode criar uma conta e acessar as áreas autenticadas. Até existirem papéis e
+  autorização, nenhum dado sensível deve ser exposto apenas por exigir login.
+- Confirmação de e-mail, recuperação de senha, bloqueio por tentativas e rate limiting do login e do
+  cadastro ainda não estão implementados e devem ser tratados antes de produção.
 - O Worker BullMQ, que dependia de Redis, permanece fora do escopo; a tecnologia de filas deverá ser
   definida novamente quando houver processamento assíncrono.
 

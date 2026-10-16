@@ -17,6 +17,7 @@ export interface NewUser {
   email: string;
   name: string;
   passwordHash: string;
+  phone?: string;
 }
 
 export const normalizeEmail = (email: string): string => email.trim().toLowerCase();
@@ -44,9 +45,13 @@ export class UserRepository {
 
     return user ?? null;
   }
+
+  create(user: NewUser): Promise<string> {
+    return insertUser(this.db, user);
+  }
 }
 
-// Usado pelo CLI de criação de usuários, fora do contêiner de injeção do NestJS.
+// Também usado pelo CLI de criação de usuários, fora do contêiner de injeção do NestJS.
 export const insertUser = async (db: Database, user: NewUser): Promise<string> => {
   const id = uuidv7();
 
@@ -55,6 +60,7 @@ export const insertUser = async (db: Database, user: NewUser): Promise<string> =
     email: normalizeEmail(user.email),
     name: user.name.trim(),
     passwordHash: user.passwordHash,
+    ...(user.phone ? { phone: user.phone } : {}),
   });
 
   return id;

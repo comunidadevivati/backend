@@ -8,6 +8,13 @@
       "when": 1792122017194,
       "tag": "0000_auth_inicial",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792132701958,
+      "tag": "0001_telefone_usuario",
+      "breakpoints": true
     }
   ]
 }
