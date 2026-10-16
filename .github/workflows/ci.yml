@@ -105,9 +105,6 @@ jobs:
       - name: Build Core API image
         run: docker build --file apps/core-api/Dockerfile --tag comvivati/core-api:ci .
 
-      - name: Build Keycloak image
-        run: docker build --file deploy/keycloak/Dockerfile --tag comvivati/keycloak:ci .
-
   audit:
     name: Daily Dependency Audit
     if: github.event_name == 'schedule'

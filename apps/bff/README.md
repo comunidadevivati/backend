@@ -11,6 +11,7 @@ Tecnologias:
 - TypeScript
 - Node.js
 - Zod para validação de contratos
+- Drizzle ORM e PostgreSQL para usuários e sessões
 
 O BFF é uma aplicação independente, com build e deploy próprios.
 
@@ -18,9 +19,8 @@ O BFF é uma aplicação independente, com build e deploy próprios.
 
 O BFF deve:
 
-- Integrar a aplicação web com o Keycloak.
-- Executar o fluxo OIDC Authorization Code com PKCE.
-- Gerenciar sessões no servidor.
+- Autenticar usuários por e-mail e senha.
+- Gerenciar sessões no servidor (PostgreSQL, schema `auth`).
 - Utilizar cookies Secure, HttpOnly e SameSite apropriado.
 - Implementar proteção contra CSRF.
 - Agregar respostas de APIs quando necessário.
@@ -34,11 +34,12 @@ O BFF deve:
 O BFF não deve:
 
 - Implementar regras centrais de negócio.
-- Acessar diretamente os schemas PostgreSQL dos Bounded Contexts.
+- Acessar diretamente os schemas PostgreSQL dos Bounded Contexts. O único schema do BFF é `auth`
+  (ADR 0003).
 - Executar migrations dos domínios.
 - Gerenciar roles, grants ou políticas de autorização de negócio.
 - Confiar em identificadores de usuários fornecidos arbitrariamente pelo navegador.
-- Expor access tokens ou refresh tokens ao JavaScript do frontend.
+- Expor o token de sessão ou hashes de senha ao JavaScript do frontend.
 - Substituir a validação de autorização da Core API.
 
 ## 4. Estrutura arquitetural de referência
@@ -61,48 +62,54 @@ Esta estrutura é uma referência inicial, sujeita a refinamento durante a imple
 
 ## 5. Autenticação
 
-Identity Provider:
-
-- Keycloak.
+Login por e-mail e senha, decidido no [ADR 0003](../../docs/adr/0003-autenticacao-email-senha-postgresql.md).
+Não há Identity Provider externo.
 
 Fluxo:
 
-1. O navegador solicita autenticação ao BFF.
-2. O BFF inicia Authorization Code com PKCE.
-3. O usuário autentica no Keycloak.
-4. O BFF processa o callback OIDC.
-5. O BFF cria uma sessão no servidor.
-6. O navegador recebe um cookie de sessão seguro.
-7. O BFF utiliza credenciais de servidor para acessar a Core API.
+1. O frontend envia `POST /auth/login` com `{ "email", "password" }`.
+2. O BFF valida a senha (scrypt) de um usuário `ACTIVE` no schema `auth`.
+3. O BFF cria uma sessão no PostgreSQL e devolve um cookie de sessão seguro.
+4. O frontend consulta `GET /auth/me` para obter o usuário e o token CSRF.
 
-O navegador não deve armazenar tokens OIDC em localStorage ou sessionStorage.
+O navegador não armazena tokens em localStorage ou sessionStorage.
 
 ### Contrato web implementado
 
-- `GET /auth/login`: inicia o Authorization Code Flow com PKCE.
-- `GET /auth/callback`: valida a transação OIDC, cria a sessão e redireciona para
-  `/dashboard` na aplicação web.
-- `GET /auth/me`: retorna somente os dados públicos da sessão, incluindo o token CSRF que deve
-  permanecer apenas em memória no frontend.
-- `POST /auth/logout`: exige o header `X-CSRF-Token`, revoga a sessão no Redis e remove o cookie.
+- `POST /auth/login`: `200` com o mesmo corpo de `/auth/me` e o cookie de sessão; `400` para
+  corpo inválido; `401` para credenciais inválidas, sem distinguir e-mail inexistente, senha
+  incorreta ou usuário suspenso. Revoga a sessão anterior do mesmo navegador.
+- `GET /auth/me`: `{ authenticated, csrfToken, user: { subject, email, name } }`. O token CSRF
+  deve permanecer apenas em memória no frontend. Renova a expiração por inatividade.
+- `POST /auth/logout`: exige o header `X-CSRF-Token`, revoga a sessão no banco e remove o cookie.
 
-O BFF aceita requisições com credenciais somente da origem definida em `WEB_BASE_URL`. Access
-tokens, refresh tokens e ID tokens permanecem na sessão criptografada no servidor.
+O BFF aceita requisições com credenciais somente da origem definida em `WEB_BASE_URL`.
+
+### Usuários
+
+Não há cadastro público. Crie usuários com o CLI (a senha é solicitada sem eco no terminal):
+
+```bash
+pnpm --dir apps/bff user:create --email pessoa@exemplo.com --name "Nome da Pessoa"
+```
 
 ## 6. Sessões
 
-Requisitos:
+- Token opaco de 32 bytes em cookie assinado, HttpOnly, `SameSite=Lax`; `Secure` e prefixo
+  `__Host-` quando `BFF_BASE_URL` usa HTTPS.
+- O banco armazena somente o SHA-256 do token.
+- Expiração por inatividade de 30 minutos e absoluta de 12 horas.
+- Rotação da sessão a cada login e revogação no logout.
+- Sessões de usuários suspensos deixam de ser aceitas imediatamente.
+- Sessões vencidas são removidas a cada novo login.
 
-- Identificador de sessão opaco.
-- Cookie Secure e HttpOnly.
-- Política SameSite adequada.
-- Proteção contra CSRF.
-- Expiração absoluta e por inatividade, conforme política.
-- Rotação da sessão após autenticação.
-- Revogação de sessão.
-- Armazenamento centralizado quando houver múltiplas instâncias.
+### Banco de dados
 
-Nenhum estado crítico da sessão deve depender exclusivamente da memória de um Container.
+- Schema: `src/auth/infrastructure/database/auth.schema.ts`.
+- Migrations versionadas: `drizzle/`, geradas com `pnpm --dir apps/bff db:generate` e aplicadas
+  automaticamente quando o BFF inicia.
+- Desenvolvimento local: `docker compose up -d postgres` na raiz e `DATABASE_URL` em `.env.local`
+  (ver `.env.example`).
 
 ## 7. Comunicação BFF → Core API
 
@@ -172,7 +179,7 @@ procedimento operacional está em `../../docs/deployment/README.md`.
 O BFF deve:
 
 - Ser stateless em relação ao processo.
-- Utilizar armazenamento externo para sessões.
+- Utilizar PostgreSQL para sessões.
 - Suportar múltiplas instâncias.
 - Implementar healthchecks e readiness.
 - Encerrar conexões de forma controlada.
@@ -188,13 +195,14 @@ O BFF deve:
 - Rastreamento de chamadas à Core API.
 - Monitoramento de falhas de autenticação.
 
-Nunca registrar tokens OIDC, segredos de sessão ou dados pessoais desnecessários.
+Nunca registrar senhas, tokens de sessão ou dados pessoais desnecessários.
 
 ## 13. Testes
 
 - Vitest.
 - Testes de sessão.
-- Testes de autenticação OIDC.
+- Testes de autenticação por e-mail e senha.
+- Testes de integração com PostgreSQL real (Testcontainers): `pnpm --dir apps/bff test:integration`.
 - Testes de CSRF.
 - Testes de integração com a Core API.
 - Testes de contratos.

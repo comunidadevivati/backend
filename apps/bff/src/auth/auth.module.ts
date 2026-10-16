@@ -1,12 +1,11 @@
 import { Module } from '@nestjs/common';
-import { OidcClientService } from './infrastructure/keycloak/oidc-client.service.js';
+import { LoginUseCase } from './application/login.use-case.js';
 import { SessionService } from './infrastructure/session/session.service.js';
-import { AuthMeController } from './presentation/auth-me.controller.js';
+import { UserRepository } from './infrastructure/users/user.repository.js';
 import { AuthController } from './presentation/auth.controller.js';
 
 @Module({
-  controllers: [AuthController, AuthMeController],
-  providers: [OidcClientService, SessionService],
-  exports: [OidcClientService, SessionService],
+  controllers: [AuthController],
+  providers: [LoginUseCase, SessionService, UserRepository],
 })
 export class AuthModule {}

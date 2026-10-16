@@ -7,21 +7,11 @@ const envSchema = z.object({
 
   BFF_BASE_URL: z.url(),
 
-  BFF_OIDC_CALLBACK_URL: z.url(),
-
   WEB_BASE_URL: z.url(),
-
-  KEYCLOAK_ISSUER: z.url(),
-
-  KEYCLOAK_CLIENT_ID: z.string().min(1),
-
-  KEYCLOAK_CLIENT_SECRET: z.string().min(1),
 
   COOKIE_SECRET: z.string().min(32),
 
-  SESSION_ENCRYPTION_KEY: z.string().regex(/^[A-Za-z0-9_-]{43}$/u),
-
-  REDIS_URL: z.url(),
+  DATABASE_URL: z.url({ protocol: /^postgres(?:ql)?$/u }),
 });
 
 export const validateEnv = (config: Record<string, unknown>) => {

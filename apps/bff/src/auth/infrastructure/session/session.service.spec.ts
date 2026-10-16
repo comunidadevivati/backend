@@ -1,151 +1,124 @@
-import { randomBytes } from 'node:crypto';
-import { describe, expect, it, vi } from 'vitest';
-import { SessionService, type AuthSession } from './session.service.js';
-import type { RedisService } from '../../../shared/infrastructure/redis/redis.service.js';
-import type { ConfigService } from '@nestjs/config';
+import { createHash } from 'node:crypto';
+import { describe, expect, it } from 'vitest';
+import { SessionService } from './session.service.js';
+import type { DatabaseService } from '../../../shared/infrastructure/database/database.service.js';
 
-const sessionData: AuthSession = {
-  subject: 'usuario-123',
-  csrfToken: 'csrf-token-teste',
-  accessToken: 'access-token-teste',
-  refreshToken: 'refresh-token-teste',
-  idToken: 'id-token-teste',
-  accessTokenExpiresAt: 1800000000,
-  createdAt: 1799999700,
-};
+interface RecordedCall {
+  method: string;
+  args: unknown[];
+}
 
-const createFixture = () => {
-  const storage = new Map<string, string>();
+// Simula o query builder do Drizzle: registra a cadeia de chamadas e resolve cada consulta com o
+// próximo resultado da fila. O SQL real é coberto pelo teste de integração com PostgreSQL.
+const createDatabaseMock = (results: unknown[][] = []) => {
+  const calls: RecordedCall[] = [];
 
-  const encryptionKey = randomBytes(32).toString('base64url');
+  const queue = [...results];
 
-  const client = {
-    set: vi.fn((key: string, value: string) => {
-      storage.set(key, value);
+  const chain: object = new Proxy(
+    {},
+    {
+      get: (_target, property) => {
+        if (property === 'then') {
+          const result = queue.shift() ?? [];
 
-      return Promise.resolve('OK');
-    }),
-    get: vi.fn((key: string) => Promise.resolve(storage.get(key) ?? null)),
-    del: vi.fn((key: string) => Promise.resolve(storage.delete(key) ? 1 : 0)),
-  };
+          return (resolve: (value: unknown) => void) => {
+            resolve(result);
+          };
+        }
 
-  const redisService = {
-    getClient: () => client,
-  } as unknown as RedisService;
+        return (...args: unknown[]) => {
+          calls.push({ method: String(property), args });
 
-  const configService = {
-    getOrThrow: (key: string) => {
-      if (key === 'SESSION_ENCRYPTION_KEY') {
-        return encryptionKey;
-      }
-
-      throw new Error(`Configuração desconhecida: ${key}`);
+          return chain;
+        };
+      },
     },
-  } as ConfigService;
+  );
 
-  const service = new SessionService(redisService, configService);
-
-  return { service, client, storage };
+  return {
+    calls,
+    service: new SessionService({ db: chain } as unknown as DatabaseService),
+  };
 };
+
+const validToken = 'A'.repeat(43);
+
+const sha256 = (value: string) => createHash('sha256').update(value).digest('base64url');
 
 describe('SessionService — criação', () => {
-  it('deve criar uma sessão com identificador seguro', async () => {
-    const { service } = createFixture();
+  it('deve gerar tokens aleatórios e persistir somente o hash do token', async () => {
+    const { calls, service } = createDatabaseMock();
 
-    const sessionId = await service.createSession(sessionData);
+    const { csrfToken, token } = await service.createSession('usuario-1');
 
-    expect(sessionId).toMatch(/^[A-Za-z0-9_-]{43}$/u);
-  });
+    expect(token).toMatch(/^[\w-]{43}$/u);
 
-  it('deve armazenar a sessão criptografada no Redis', async () => {
-    const { service, storage } = createFixture();
+    expect(csrfToken).toMatch(/^[\w-]{43}$/u);
 
-    await service.createSession(sessionData);
+    expect(csrfToken).not.toBe(token);
 
-    expect([...storage.values()][0]).not.toContain(sessionData.accessToken);
-  });
+    const values = calls.find(({ method }) => method === 'values')?.args[0];
 
-  it('deve configurar o TTL de 1800 segundos', async () => {
-    const { service, client } = createFixture();
+    expect(values).toMatchObject({ tokenHash: sha256(token), userId: 'usuario-1', csrfToken });
 
-    await service.createSession(sessionData);
-
-    expect(client.set).toHaveBeenCalledWith(
-      expect.stringContaining('comvivati:bff:session:'),
-      expect.any(String),
-      { EX: 1800 },
+    expect(JSON.stringify(calls.map(({ method }) => method))).toBe(
+      JSON.stringify(['delete', 'where', 'insert', 'values']),
     );
   });
 });
 
-describe('SessionService — recuperação', () => {
-  it('deve recuperar a sessão descriptografada', async () => {
-    const { service } = createFixture();
+describe('SessionService — consulta', () => {
+  it('deve retornar a sessão válida e renovar sua expiração', async () => {
+    const session = {
+      userId: 'usuario-1',
+      email: 'usuario@exemplo.com',
+      name: 'Usuário',
+      csrfToken: 'csrf',
+    };
 
-    const sessionId = await service.createSession(sessionData);
+    const { calls, service } = createDatabaseMock([[session]]);
 
-    expect(await service.getSession(sessionId)).toEqual(sessionData);
+    await expect(service.getSession(validToken)).resolves.toEqual(session);
+
+    expect(calls.map(({ method }) => method)).toEqual([
+      'update',
+      'set',
+      'from',
+      'where',
+      'returning',
+    ]);
   });
 
-  it('deve rejeitar identificadores inválidos', async () => {
-    const { service } = createFixture();
+  it('deve retornar null quando a sessão não existir, expirar ou o usuário estiver suspenso', async () => {
+    const { service } = createDatabaseMock([[]]);
 
-    expect(await service.getSession('identificador-invalido')).toBeNull();
+    await expect(service.getSession(validToken)).resolves.toBeNull();
   });
 
-  it('deve rejeitar dados criptografados adulterados', async () => {
-    const { service, storage } = createFixture();
+  it('deve recusar tokens em formato inválido sem consultar o banco', async () => {
+    const { calls, service } = createDatabaseMock();
 
-    const sessionId = await service.createSession(sessionData);
+    await expect(service.getSession('curto')).resolves.toBeNull();
 
-    storage.set(`comvivati:bff:session:${sessionId}`, 'conteudo-adulterado');
-
-    await expect(service.getSession(sessionId)).rejects.toThrow();
+    expect(calls).toHaveLength(0);
   });
 });
 
-describe('SessionService — exclusão', () => {
-  it('deve excluir a sessão no logout', async () => {
-    const { service } = createFixture();
+describe('SessionService — revogação', () => {
+  it('deve remover a sessão pelo hash do token', async () => {
+    const { calls, service } = createDatabaseMock();
 
-    const sessionId = await service.createSession(sessionData);
+    await service.deleteSession(validToken);
 
-    await service.deleteSession(sessionId);
-
-    expect(await service.getSession(sessionId)).toBeNull();
-  });
-});
-
-describe('SessionService — validações adicionais', () => {
-  it('deve rejeitar uma chave de criptografia inválida', () => {
-    const redis = {
-      getClient: vi.fn(),
-    } as unknown as RedisService;
-
-    const config = {
-      getOrThrow: vi.fn(() => 'chave-invalida'),
-    } as unknown as ConfigService;
-
-    expect(() => new SessionService(redis, config)).toThrow(
-      'SESSION_ENCRYPTION_KEY deve conter 32 bytes.',
-    );
+    expect(calls.map(({ method }) => method)).toEqual(['delete', 'where']);
   });
 
-  it('deve ignorar a exclusão de identificadores inválidos', async () => {
-    const { service, client } = createFixture();
+  it('deve ignorar tokens em formato inválido', async () => {
+    const { calls, service } = createDatabaseMock();
 
-    await service.deleteSession('identificador-invalido');
+    await service.deleteSession('token invalido');
 
-    expect(client.del).not.toHaveBeenCalled();
-  });
-
-  it('deve rejeitar uma sessão com partes incompletas', async () => {
-    const { service, storage } = createFixture();
-
-    const sessionId = await service.createSession(sessionData);
-
-    storage.set(`comvivati:bff:session:${sessionId}`, '.assinatura.conteudo');
-
-    await expect(service.getSession(sessionId)).rejects.toThrow('Dados da sessão incompletos.');
+    expect(calls).toHaveLength(0);
   });
 });

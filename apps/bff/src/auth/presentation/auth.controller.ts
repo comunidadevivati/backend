@@ -1,185 +1,196 @@
-import { randomBytes } from 'node:crypto';
-import { BadRequestException, Controller, Get, Inject, Req, Res } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { timingSafeEqual } from 'node:crypto';
 import {
-  authorizationCodeGrant,
-  buildAuthorizationUrl,
-  calculatePKCECodeChallenge,
-  randomNonce,
-  randomPKCECodeVerifier,
-  randomState,
-} from 'openid-client';
+  BadRequestException,
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Header,
+  HttpCode,
+  Inject,
+  Post,
+  Req,
+  Res,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { z } from 'zod';
+import { LoginUseCase } from '../application/login.use-case.js';
 import { getSessionCookieName } from '../domain/constants/session-cookie.constants.js';
-import { OidcClientService } from '../infrastructure/keycloak/oidc-client.service.js';
-import { SessionService } from '../infrastructure/session/session.service.js';
+import {
+  SESSION_ABSOLUTE_TIMEOUT_SECONDS,
+  SessionService,
+  type AuthSession,
+} from '../infrastructure/session/session.service.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
-const transactionCookies = ['cv_oidc_state', 'cv_oidc_nonce', 'cv_oidc_verifier'] as const;
+const loginRequestSchema = z.object({
+  email: z.string().trim().toLowerCase().pipe(z.email().max(254)),
+  password: z.string().min(1).max(1024),
+});
+
+export interface AuthenticatedUser {
+  authenticated: true;
+  csrfToken: string;
+  user: {
+    subject: string;
+    email: string;
+    name: string;
+  };
+}
+
+interface SessionContext {
+  cookieName: string;
+  sessionToken: string;
+  session: AuthSession;
+}
 
 @Controller('auth')
 export class AuthController {
   constructor(
-    @Inject(OidcClientService)
-    private readonly oidcClient: OidcClientService,
-    @Inject(ConfigService)
-    private readonly configService: ConfigService,
+    @Inject(LoginUseCase)
+    private readonly loginUseCase: LoginUseCase,
     @Inject(SessionService)
     private readonly sessionService: SessionService,
+    @Inject(ConfigService)
+    private readonly configService: ConfigService,
   ) {}
 
-  @Get('login')
-  async login(@Res() reply: FastifyReply): Promise<void> {
-    const configuration = this.oidcClient.getConfiguration();
+  @Post('login')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  async login(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<AuthenticatedUser> {
+    const credentials = loginRequestSchema.safeParse(body);
 
-    const redirectUri = this.configService.getOrThrow<string>('BFF_OIDC_CALLBACK_URL');
-
-    const codeVerifier = randomPKCECodeVerifier();
-
-    const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
-
-    const state = randomState();
-
-    const nonce = randomNonce();
-
-    const options = {
-      httpOnly: true,
-      signed: true,
-      secure: this.isHttps(),
-      sameSite: 'lax' as const,
-      path: '/auth',
-      maxAge: 300,
-    };
-
-    reply.setCookie('cv_oidc_state', state, options);
-
-    reply.setCookie('cv_oidc_nonce', nonce, options);
-
-    reply.setCookie('cv_oidc_verifier', codeVerifier, options);
-
-    const authorizationUrl = buildAuthorizationUrl(configuration, {
-      redirect_uri: redirectUri,
-      scope: 'openid profile email',
-      response_type: 'code',
-      state,
-      nonce,
-      code_challenge: codeChallenge,
-      code_challenge_method: 'S256',
-    });
-
-    reply.code(302).redirect(authorizationUrl.href);
-  }
-
-  @Get('callback')
-  async callback(@Req() request: FastifyRequest, @Res() reply: FastifyReply): Promise<void> {
-    const state = this.readSignedCookie(request, 'cv_oidc_state');
-
-    const nonce = this.readSignedCookie(request, 'cv_oidc_nonce');
-
-    const codeVerifier = this.readSignedCookie(request, 'cv_oidc_verifier');
-
-    this.clearTransactionCookies(reply);
-
-    if (!state || !nonce || !codeVerifier) {
-      throw new BadRequestException('Transação de autenticação inválida ou expirada.');
+    if (!credentials.success) {
+      throw new BadRequestException('Informe um e-mail válido e a senha.');
     }
 
-    const callbackUrl = this.validateCallbackUrl(request);
+    const result = await this.loginUseCase.execute(credentials.data);
 
-    const sessionId = await this.createAuthenticatedSession(
-      callbackUrl,
-      state,
-      nonce,
-      codeVerifier,
-    );
+    if (!result) {
+      throw new UnauthorizedException('E-mail ou senha inválidos.');
+    }
 
-    reply.setCookie(getSessionCookieName(this.isHttps()), sessionId, {
+    const cookieName = this.getCookieName();
+
+    // Rotação: uma sessão anterior no mesmo navegador é revogada ao autenticar novamente.
+    const previousToken = this.readSessionToken(request, cookieName);
+
+    if (previousToken) {
+      await this.sessionService.deleteSession(previousToken);
+    }
+
+    reply.setCookie(cookieName, result.sessionToken, {
       httpOnly: true,
       signed: true,
       secure: this.isHttps(),
       sameSite: 'lax',
       path: '/',
-      maxAge: 1800,
+      maxAge: SESSION_ABSOLUTE_TIMEOUT_SECONDS,
     });
 
-    const webUrl = this.configService.getOrThrow<string>('WEB_BASE_URL');
-
-    const dashboardUrl = new URL('/dashboard', webUrl);
-
-    reply.code(302).redirect(dashboardUrl.href);
+    return {
+      authenticated: true,
+      csrfToken: result.csrfToken,
+      user: {
+        subject: result.user.id,
+        email: result.user.email,
+        name: result.user.name,
+      },
+    };
   }
 
-  private validateCallbackUrl(request: FastifyRequest): URL {
-    const baseUrl = this.configService.getOrThrow<string>('BFF_BASE_URL');
+  @Get('me')
+  @Header('Cache-Control', 'no-store')
+  async me(@Req() request: FastifyRequest): Promise<AuthenticatedUser> {
+    const { session } = await this.getSessionContext(request);
 
-    const expectedUrl = this.configService.getOrThrow<string>('BFF_OIDC_CALLBACK_URL');
+    return {
+      authenticated: true,
+      csrfToken: session.csrfToken,
+      user: {
+        subject: session.userId,
+        email: session.email,
+        name: session.name,
+      },
+    };
+  }
 
-    const callbackUrl = new URL(request.url, baseUrl);
+  @Post('logout')
+  @HttpCode(204)
+  @Header('Cache-Control', 'no-store')
+  async logout(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<void> {
+    const { cookieName, sessionToken, session } = await this.getSessionContext(request);
 
-    if (
-      callbackUrl.origin !== new URL(expectedUrl).origin ||
-      callbackUrl.pathname !== new URL(expectedUrl).pathname
-    ) {
-      throw new BadRequestException('Callback OIDC inválido.');
+    const csrfToken = request.headers['x-csrf-token'];
+
+    if (typeof csrfToken !== 'string' || !this.matchesCsrfToken(session.csrfToken, csrfToken)) {
+      throw new ForbiddenException('Token CSRF inválido.');
     }
 
-    return callbackUrl;
+    await this.sessionService.deleteSession(sessionToken);
+
+    reply.clearCookie(cookieName, { path: '/' });
   }
 
-  private async createAuthenticatedSession(
-    callbackUrl: URL,
-    state: string,
-    nonce: string,
-    codeVerifier: string,
-  ): Promise<string> {
-    const tokens = await authorizationCodeGrant(this.oidcClient.getConfiguration(), callbackUrl, {
-      expectedState: state,
-      expectedNonce: nonce,
-      pkceCodeVerifier: codeVerifier,
-      idTokenExpected: true,
-    });
+  private async getSessionContext(request: FastifyRequest): Promise<SessionContext> {
+    const cookieName = this.getCookieName();
 
-    const claims = tokens.claims();
-
-    if (!claims?.sub || !tokens.access_token) {
-      throw new BadRequestException('Resposta de autenticação inválida.');
+    if (!request.cookies[cookieName]) {
+      throw new UnauthorizedException('Sessão não encontrada.');
     }
 
-    const now = Math.floor(Date.now() / 1000);
+    const sessionToken = this.readSessionToken(request, cookieName);
 
-    return this.sessionService.createSession({
-      subject: claims.sub,
-      ...(typeof claims['email'] === 'string' ? { email: claims['email'] } : {}),
-      ...(typeof claims['name'] === 'string' ? { name: claims['name'] } : {}),
-      csrfToken: randomBytes(32).toString('base64url'),
-      accessToken: tokens.access_token,
-      ...(tokens.refresh_token ? { refreshToken: tokens.refresh_token } : {}),
-      ...(tokens.id_token ? { idToken: tokens.id_token } : {}),
-      accessTokenExpiresAt: now + (tokens.expires_in ?? 300),
-      createdAt: now,
-    });
+    if (!sessionToken) {
+      throw new UnauthorizedException('Sessão inválida.');
+    }
+
+    const session = await this.sessionService.getSession(sessionToken);
+
+    if (!session) {
+      throw new UnauthorizedException('Sessão expirada ou inválida.');
+    }
+
+    return { cookieName, sessionToken, session };
   }
 
-  private readSignedCookie(request: FastifyRequest, name: string): string | null {
-    const cookie = request.cookies[name];
+  private readSessionToken(request: FastifyRequest, cookieName: string): string | null {
+    const cookie = request.cookies[cookieName];
 
     if (!cookie) {
       return null;
     }
 
-    const result = request.unsignCookie(cookie);
+    const unsigned = request.unsignCookie(cookie);
 
-    return result.valid ? result.value : null;
+    return unsigned.valid && unsigned.value ? unsigned.value : null;
   }
 
-  private clearTransactionCookies(reply: FastifyReply): void {
-    for (const name of transactionCookies) {
-      reply.clearCookie(name, { path: '/auth' });
-    }
+  private matchesCsrfToken(expected: string, received: string): boolean {
+    const expectedBuffer = Buffer.from(expected);
+
+    const receivedBuffer = Buffer.from(received);
+
+    return (
+      expectedBuffer.length === receivedBuffer.length &&
+      timingSafeEqual(expectedBuffer, receivedBuffer)
+    );
+  }
+
+  private getCookieName(): string {
+    return getSessionCookieName(this.isHttps());
   }
 
   private isHttps(): boolean {
-    const baseUrl = this.configService.getOrThrow<string>('BFF_BASE_URL');
-
-    return new URL(baseUrl).protocol === 'https:';
+    return new URL(this.configService.getOrThrow<string>('BFF_BASE_URL')).protocol === 'https:';
   }
 }
