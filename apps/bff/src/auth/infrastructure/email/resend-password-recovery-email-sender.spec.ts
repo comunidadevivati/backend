@@ -49,11 +49,39 @@ describe('ResendPasswordRecoveryEmailSender', () => {
 
     const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
 
-    const body = JSON.parse(String(request.body)) as { html: string; text: string };
+    const body = JSON.parse(String(request.body)) as {
+      attachments: {
+        content: string;
+        content_id: string;
+        content_type: string;
+        filename: string;
+      }[];
+      from: string;
+      html: string;
+      subject: string;
+      text: string;
+    };
+
+    expect(body.from).toBe('Segurança <seguranca@mail.exemplo.com>');
+
+    expect(body.subject).toBe('Redefinição de senha — Comunidade Viva e Eficaz');
 
     expect(body.text).toContain('https://app.exemplo.com/reset-password?token=token-secreto');
 
-    expect(body.html).toContain('Pessoa &lt;Exemplo&gt;');
+    expect(body.html).toContain('Olá, Pessoa.');
+
+    expect(body.html).toContain('src="cid:logo-comunidade-viva"');
+
+    const [logo] = body.attachments;
+
+    expect(logo).toMatchObject({
+      filename: 'logo-comunidade-viva.png',
+      content_type: 'image/png',
+      content_id: 'logo-comunidade-viva',
+    });
+
+    // Assinatura de arquivo PNG em Base64.
+    expect(logo?.content.startsWith('iVBORw0KGgo')).toBe(true);
   });
 
   it('deve falhar quando o Resend recusar o envio', async () => {
