@@ -1,4 +1,4 @@
-import { index, pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, pgSchema, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 export const authSchema = pgSchema('auth');
 
@@ -33,5 +33,25 @@ export const sessions = authSchema.table(
   (table) => [
     index('sessions_user_id_idx').on(table.userId),
     index('sessions_expires_at_idx').on(table.expiresAt),
+  ],
+);
+
+export const passwordResetTokens = authSchema.table(
+  'password_reset_tokens',
+  {
+    id: uuid('id').primaryKey(),
+    // Somente o SHA-256 é persistido; o token original existe apenas no e-mail enviado.
+    tokenHash: text('token_hash').notNull(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex('password_reset_tokens_token_hash_uidx').on(table.tokenHash),
+    index('password_reset_tokens_user_id_idx').on(table.userId),
+    index('password_reset_tokens_expires_at_idx').on(table.expiresAt),
   ],
 );

@@ -29,6 +29,7 @@ e-mail e senha, usando apenas PostgreSQL.
   de validação e força de senha do frontend; a conta nasce `ACTIVE` e o próprio BFF abre a sessão na
   resposta do cadastro, sem uma segunda chamada de login pelo frontend.
   O CLI `pnpm --dir apps/bff user:create` permanece para criação administrativa.
+- Recuperação e redefinição de senha seguem o [ADR 0004](0004-recuperacao-de-senha-com-resend.md).
 
 ## Justificativa
 
@@ -46,8 +47,9 @@ a sessão é revogável no servidor e o frontend continua consumindo `/auth/*` n
   Identity/Authorization da Core API. A migração das credenciais para a Core API exigirá novo ADR.
 - Qualquer pessoa pode criar uma conta e acessar as áreas autenticadas. Até existirem papéis e
   autorização, nenhum dado sensível deve ser exposto apenas por exigir login.
-- Confirmação de e-mail, recuperação de senha, bloqueio por tentativas e rate limiting do login e do
-  cadastro ainda não estão implementados e devem ser tratados antes de produção.
+- A recuperação usa resposta neutra, token de uso único e Resend. Confirmação de e-mail, bloqueio
+  por tentativas e rate limiting por IP do login, cadastro e recuperação ainda devem ser tratados
+  antes de produção.
 - O Worker BullMQ, que dependia de Redis, permanece fora do escopo; a tecnologia de filas deverá ser
   definida novamente quando houver processamento assíncrono.
 

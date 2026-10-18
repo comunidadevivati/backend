@@ -15,6 +15,13 @@
       "when": 1792132701958,
       "tag": "0001_telefone_usuario",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792294489955,
+      "tag": "0002_common_winter_soldier",
+      "breakpoints": true
     }
   ]
 }

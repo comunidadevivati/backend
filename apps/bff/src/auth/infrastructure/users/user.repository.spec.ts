@@ -68,6 +68,22 @@ describe('UserRepository', () => {
 
     await expect(repository.findByEmail('ninguem@exemplo.com')).resolves.toBeNull();
   });
+
+  it('deve informar quando o e-mail existir', async () => {
+    const { db } = createDatabaseMock([[{ id: 'usuario-1' }]]);
+
+    const repository = new UserRepository({ db } as DatabaseService);
+
+    await expect(repository.existsByEmail('Pessoa@Exemplo.com')).resolves.toBe(true);
+  });
+
+  it('deve informar quando o e-mail não existir', async () => {
+    const { db } = createDatabaseMock([[]]);
+
+    const repository = new UserRepository({ db } as DatabaseService);
+
+    await expect(repository.existsByEmail('ninguem@exemplo.com')).resolves.toBe(false);
+  });
 });
 
 describe('UserRepository.create', () => {

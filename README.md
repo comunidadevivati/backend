@@ -6,8 +6,9 @@ Projeto Backend da Comunidade Viva - API + BFF
 
 O backend possui um Blueprint do Render para publicar Core API e BFF em serviços web gratuitos.
 PostgreSQL é provisionado no Neon Free e guarda usuários e sessões do login por e-mail e senha
-([ADR 0003](docs/adr/0003-autenticacao-email-senha-postgresql.md)). O frontend permanece na
-Cloudflare e encaminha `/auth/*` ao BFF para preservar a sessão na mesma origem.
+([ADR 0003](docs/adr/0003-autenticacao-email-senha-postgresql.md)). A recuperação usa o Resend
+([ADR 0004](docs/adr/0004-recuperacao-de-senha-com-resend.md)). O frontend permanece na Cloudflare e
+encaminha `/auth/*` ao BFF para preservar a sessão na mesma origem.
 
 Ambiente local: `docker compose up -d postgres`, `DATABASE_URL` em `apps/bff/.env.local` e
 `pnpm --dir apps/bff user:create --email ... --name ...` para criar um usuário.

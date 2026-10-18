@@ -5,10 +5,119 @@ import {
   login,
   logout,
   PASSWORD,
+  requestPasswordRecovery,
+  resetPassword,
+  sentPasswordRecoveryEmails,
   sessionCookieOf,
   sessionTokenOf,
   sha256,
 } from './support/auth-test-context.js';
+
+describe('POST /auth/password-recovery (PostgreSQL real)', () => {
+  it('deve emitir token com hash persistido para e-mail existente', async () => {
+    const response = await requestPasswordRecovery('  MEMBRO@exemplo.com ');
+
+    expect(response.statusCode).toBe(200);
+
+    expect(response.headers['cache-control']).toBe('no-store');
+
+    expect(response.json()).toEqual({
+      message: 'Se existir uma conta para este e-mail, enviaremos as instruções.',
+    });
+
+    const sentEmail = sentPasswordRecoveryEmails.at(-1);
+
+    expect(sentEmail).toMatchObject({
+      email: 'membro@exemplo.com',
+      name: 'Membro Ativo',
+      ttlMinutes: 15,
+    });
+
+    const { rows } = await connection.pool.query<{ token_hash: string; valid: boolean }>(
+      `select token_hash, expires_at > now() as valid
+       from auth.password_reset_tokens
+       where user_id = (select id from auth.users where email = 'membro@exemplo.com')`,
+    );
+
+    expect(rows).toEqual([{ token_hash: sha256(sentEmail?.token ?? ''), valid: true }]);
+  });
+
+  it.each(['nao-e-email', 'ninguem@exemplo.com'])(
+    'deve usar resposta genérica para e-mail inválido ou inexistente: %s',
+    async (email) => {
+      const sentBefore = sentPasswordRecoveryEmails.length;
+
+      const response = await requestPasswordRecovery(email);
+
+      expect(response.statusCode).toBe(200);
+
+      expect(response.json()).toEqual({
+        message: 'Se existir uma conta para este e-mail, enviaremos as instruções.',
+      });
+
+      expect(sentPasswordRecoveryEmails).toHaveLength(sentBefore);
+    },
+  );
+
+  it('deve invalidar o link anterior ao solicitar outro', async () => {
+    await requestPasswordRecovery('membro@exemplo.com');
+
+    const previousToken = sentPasswordRecoveryEmails.at(-1)?.token ?? '';
+
+    await requestPasswordRecovery('membro@exemplo.com');
+
+    expect((await resetPassword(previousToken, 'Outra#Senha2028')).statusCode).toBe(400);
+  });
+});
+
+describe('POST /auth/password-reset (PostgreSQL real)', () => {
+  it('deve trocar a senha, consumir o token e revogar todas as sessões', async () => {
+    const oldSession = sessionCookieOf(await login('recuperacao@exemplo.com', PASSWORD));
+
+    await requestPasswordRecovery('recuperacao@exemplo.com');
+
+    const token = sentPasswordRecoveryEmails.at(-1)?.token ?? '';
+
+    const response = await resetPassword(token, 'N0vo#Acesso2027');
+
+    expect(response.statusCode).toBe(200);
+
+    expect(response.json()).toEqual({
+      message: 'Senha redefinida com sucesso. Faça login novamente.',
+    });
+
+    expect((await getMe(oldSession)).statusCode).toBe(401);
+
+    expect((await login('recuperacao@exemplo.com', PASSWORD)).statusCode).toBe(401);
+
+    expect((await login('recuperacao@exemplo.com', 'N0vo#Acesso2027')).statusCode).toBe(200);
+
+    expect((await resetPassword(token, 'Terceira#Senha2028')).statusCode).toBe(400);
+  });
+
+  it('deve recusar token expirado, conta suspensa e senha fraca', async () => {
+    await requestPasswordRecovery('membro@exemplo.com');
+
+    const expiredToken = sentPasswordRecoveryEmails.at(-1)?.token ?? '';
+
+    await connection.pool.query(
+      "update auth.password_reset_tokens set expires_at = now() - interval '1 second' where token_hash = $1",
+      [sha256(expiredToken)],
+    );
+
+    expect((await resetPassword(expiredToken, 'Outra#Senha2028')).statusCode).toBe(400);
+
+    await requestPasswordRecovery('suspenso@exemplo.com');
+
+    expect(sentPasswordRecoveryEmails.at(-1)?.token).toBe(expiredToken);
+
+    await requestPasswordRecovery('membro@exemplo.com');
+
+    const validToken = sentPasswordRecoveryEmails.at(-1)?.token ?? '';
+
+    expect((await resetPassword(validToken, 'senha')).statusCode).toBe(400);
+  });
+});
 
 describe('POST /auth/login (PostgreSQL real)', () => {
   it('deve recusar senha incorreta e e-mail inexistente com a mesma resposta', async () => {

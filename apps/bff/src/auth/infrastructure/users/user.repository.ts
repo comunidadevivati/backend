@@ -46,6 +46,16 @@ export class UserRepository {
     return user ?? null;
   }
 
+  async existsByEmail(email: string): Promise<boolean> {
+    const [user] = await this.db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, normalizeEmail(email)))
+      .limit(1);
+
+    return Boolean(user);
+  }
+
   create(user: NewUser): Promise<string> {
     return insertUser(this.db, user);
   }

@@ -88,6 +88,12 @@ O navegador não armazena tokens em localStorage ou sessionStorage.
   `{ authenticated: true, message: "Usuário autenticado com sucesso.", csrfToken, user }`; `400` para
   corpo inválido; `401` para credenciais inválidas, sem distinguir e-mail inexistente, senha
   incorreta ou usuário suspenso. Revoga a sessão anterior do mesmo navegador.
+- `POST /auth/password-recovery`: `{ "email" }`; responde sempre `200` com a mensagem neutra
+  `{ "message": "Se existir uma conta para este e-mail, enviaremos as instruções." }`. Para uma
+  conta ativa, emite um token de uso único com validade de 15 minutos e solicita o envio pelo
+  provider configurado, sem revelar a existência da conta.
+- `POST /auth/password-reset`: `{ "token", "password" }`; valida o link e a política de senha,
+  redefine a senha e revoga todas as sessões. O token não pode ser reutilizado.
 - `GET /auth/me`: `{ authenticated, csrfToken, user: { subject, email, name } }`. O token CSRF
   deve permanecer apenas em memória no frontend. Renova a expiração por inatividade.
 - `POST /auth/logout`: exige o header `X-CSRF-Token`, revoga a sessão no banco e remove o cookie.
@@ -121,6 +127,22 @@ pnpm --dir apps/bff user:create --email pessoa@exemplo.com --name "Nome da Pesso
   automaticamente quando o BFF inicia.
 - Desenvolvimento local: `docker compose up -d postgres` na raiz e `DATABASE_URL` em `.env.local`
   (ver `.env.example`).
+
+### Envio de recuperação
+
+O [ADR 0004](../../docs/adr/0004-recuperacao-de-senha-com-resend.md) define o Resend. Em ambiente
+local, `EMAIL_PROVIDER=disabled` mantém o fluxo sem chamada externa. Para enviar de verdade:
+
+```text
+EMAIL_PROVIDER=resend
+RESEND_API_KEY=<secret>
+EMAIL_FROM=Comunidade Viva e Eficaz <seguranca@mail.comvivaeficaz.com.br>
+PASSWORD_RESET_TTL_MINUTES=15
+PASSWORD_RESET_COOLDOWN_SECONDS=60
+EMAIL_SEND_TIMEOUT_MS=5000
+```
+
+A chave deve ficar somente no gerenciador de secrets do ambiente.
 
 ## 7. Comunicação BFF → Core API
 

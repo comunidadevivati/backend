@@ -7,6 +7,10 @@ import { Test } from '@nestjs/testing';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, expect } from 'vitest';
+import {
+  PasswordRecoveryEmailSender,
+  type SendPasswordRecoveryEmail,
+} from '../../../src/auth/application/ports/password-recovery-email-sender.js';
 import { hashPassword } from '../../../src/auth/infrastructure/password/password-hasher.js';
 import { insertUser } from '../../../src/auth/infrastructure/users/user.repository.js';
 import {
@@ -24,6 +28,8 @@ export let app: NestFastifyApplication;
 
 export let connection: DatabaseConnection;
 
+export const sentPasswordRecoveryEmails: SendPasswordRecoveryEmail[] = [];
+
 export const sha256 = (value: string) => createHash('sha256').update(value).digest('base64url');
 
 export const login = (email: string, password: string, sessionCookie?: string) =>
@@ -32,6 +38,20 @@ export const login = (email: string, password: string, sessionCookie?: string) =
     url: '/auth/login',
     payload: { email, password },
     ...(sessionCookie ? { headers: { cookie: sessionCookie } } : {}),
+  });
+
+export const requestPasswordRecovery = (email: string) =>
+  app.inject({
+    method: 'POST',
+    url: '/auth/password-recovery',
+    payload: { email },
+  });
+
+export const resetPassword = (token: string, password: string) =>
+  app.inject({
+    method: 'POST',
+    url: '/auth/password-reset',
+    payload: { token, password },
   });
 
 export const getMe = (sessionCookie: string) =>
@@ -73,6 +93,12 @@ const seedUsers = async (): Promise<void> => {
     passwordHash,
   });
 
+  await insertUser(connection.db, {
+    email: 'recuperacao@exemplo.com',
+    name: 'Conta Recuperação',
+    passwordHash,
+  });
+
   await connection.db.execute(
     sql`update auth.users set status = 'SUSPENDED' where email = 'suspenso@exemplo.com'`,
   );
@@ -88,12 +114,25 @@ beforeAll(async () => {
     WEB_BASE_URL: 'http://localhost:5173',
     COOKIE_SECRET,
     DATABASE_URL: container.getConnectionUri(),
+    EMAIL_PROVIDER: 'disabled',
+    PASSWORD_RESET_TTL_MINUTES: '15',
+    PASSWORD_RESET_COOLDOWN_SECONDS: '0',
+    EMAIL_SEND_TIMEOUT_MS: '5000',
   });
 
   // O ConfigModule valida o ambiente ao carregar o módulo: importa somente após configurá-lo.
   const { AppModule } = await import('../../../src/app.module.js');
 
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+  const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+    .overrideProvider(PasswordRecoveryEmailSender)
+    .useValue({
+      send: (message: SendPasswordRecoveryEmail) => {
+        sentPasswordRecoveryEmails.push(message);
+
+        return Promise.resolve();
+      },
+    })
+    .compile();
 
   app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
 
