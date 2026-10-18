@@ -4,13 +4,11 @@ on:
   # main publica produção e homologation publica HML no Render (autoDeployTrigger: checksPass).
   push:
     branches: [main, homologation]
+  # Sem filtro de caminhos: os checks são obrigatórios na homologation, inclusive no PR que sincroniza
+  # a release da main (que só altera CHANGELOG.md e o manifesto). O PR de release, aberto pelo
+  # GITHUB_TOKEN, não dispara workflows e é mesclado pelo próprio Release Please.
   pull_request:
     branches: [main, homologation]
-    # PRs de release só alteram estes arquivos e são mesclados pelo
-    # workflow Release Please; o CI ficaria aguardando aprovação até expirar.
-    paths-ignore:
-      - CHANGELOG.md
-      - .release-please-manifest.json
   schedule:
     - cron: '0 9 * * *'
   workflow_dispatch:
