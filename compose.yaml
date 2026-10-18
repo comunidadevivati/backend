@@ -20,6 +20,41 @@ services:
     networks:
       - backend
 
+  # Perfil "app": sobe as mesmas imagens publicadas no Render (docker compose --profile app up).
+  # Usa as portas do `pnpm dev:bff`/`dev:api`; não rode os dois modos ao mesmo tempo.
+  bff:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: apps/bff/Dockerfile
+    env_file:
+      - path: apps/bff/.env.local
+        required: false
+    environment:
+      BFF_PORT: '10000'
+      BFF_BASE_URL: http://localhost:3000
+      WEB_BASE_URL: http://localhost:5173
+      DATABASE_URL: postgresql://comunidade_viva:${POSTGRES_PASSWORD:?Obrigatório}@postgres:5432/comunidade_viva
+    ports:
+      - '127.0.0.1:3000:10000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  core-api:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: apps/core-api/Dockerfile
+    environment:
+      PORT: '10000'
+    ports:
+      - '127.0.0.1:3001:10000'
+    networks:
+      - backend
+
 networks:
   backend:
     driver: bridge

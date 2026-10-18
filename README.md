@@ -10,8 +10,11 @@ PostgreSQL é provisionado no Neon Free e guarda usuários e sessões do login p
 ([ADR 0004](docs/adr/0004-recuperacao-de-senha-com-resend.md)). O frontend permanece na Cloudflare e
 encaminha `/auth/*` ao BFF para preservar a sessão na mesma origem.
 
-Ambiente local: `docker compose up -d postgres`, `DATABASE_URL` em `apps/bff/.env.local` e
-`pnpm --dir apps/bff user:create --email ... --name ...` para criar um usuário.
+Ambiente local: copie `.env.example` para `.env` (senha do PostgreSQL) e `apps/bff/.env.example`
+para `apps/bff/.env.local`, rode `docker compose up -d postgres` e `pnpm dev:bff`. Para criar um
+usuário: `pnpm --dir apps/bff user:create --email ... --name ...`. Para validar as mesmas imagens do
+Render, use `docker compose --profile app up -d --build` (BFF em `localhost:3000` e Core API em
+`localhost:3001`), sem o `pnpm dev:bff` rodando ao mesmo tempo.
 
 Essa topologia aceita cold starts, limites de uso e ausência de SLA. Ela não representa uma
 aprovação para produção. Consulte [docs/deployment/README.md](docs/deployment/README.md).
