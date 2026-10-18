@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/comunidadevivati/backend/compare/backend-v0.4.0...backend-v0.4.1) (2026-10-18)
+
+
+### 🔧 Manutenção
+
+* **release:** 🔧 promove homologação para produção ([#21](https://github.com/comunidadevivati/backend/issues/21)) ([c787d9c](https://github.com/comunidadevivati/backend/commit/c787d9c1ce6523ab00e7a285e746ca7a395e9d26))
+
 ## [0.4.0](https://github.com/comunidadevivati/backend/compare/backend-v0.3.2...backend-v0.4.0) (2026-10-15)
 
 
