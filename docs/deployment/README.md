@@ -31,11 +31,12 @@ feat/* | fix/* | hotfix/* | release/X.Y.Z | renovate/*  ──PR──>  homolog
 - Nenhum commit ou push direto em `homologation` ou `main`; toda alteração entra por PR aprovado.
 - A `main` só aceita PRs da `homologation` (e o PR automático do Release Please). O CI recusa
   outras origens.
-- PRs para `homologation` usam squash (título no padrão de commits). A `main` só aceita **merge
-  commit** (ruleset), inclusive no PR de release mesclado pelo Release Please: a `homologation`
-  continua ancestral da `main` e o Release Please lê os commits convencionais.
+- `main` e `homologation` só aceitam **merge commit** (rulesets), inclusive no PR de release
+  mesclado pelo Release Please: o histórico das duas branches não diverge e o Release Please lê os
+  commits convencionais de cada feature. Os commits das branches de feature seguem o padrão de
+  commits do projeto.
 - Após cada release, sincronize a `main` de volta na `homologation` por PR (`main` →
-  `homologation`), também com merge commit.
+  `homologation`).
 
 As proteções são configuradas em rulesets do GitHub nas duas branches: exigir PR com aprovação,
 exigir os checks do CI, bloquear push direto, force push e exclusão.
