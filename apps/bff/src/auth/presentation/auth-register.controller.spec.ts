@@ -15,7 +15,12 @@ const created: RegisterUserResult = {
   session: {
     sessionToken: 'token-de-sessao',
     csrfToken: 'csrf-token',
-    user: { id: 'novo-usuario', email: 'maria@exemplo.com', name: 'Maria da Silva' },
+    user: {
+      id: 'novo-usuario',
+      email: 'maria@exemplo.com',
+      name: 'Maria da Silva',
+      emailVerified: false,
+    },
   },
 };
 
@@ -60,7 +65,12 @@ describe('AuthController — cadastro', () => {
       authenticated: true,
       message: 'Usuário cadastrado com sucesso.',
       csrfToken: 'csrf-token',
-      user: { subject: 'novo-usuario', email: 'maria@exemplo.com', name: 'Maria da Silva' },
+      user: {
+        subject: 'novo-usuario',
+        email: 'maria@exemplo.com',
+        name: 'Maria da Silva',
+        emailVerified: false,
+      },
     });
 
     expect(executeRegister).toHaveBeenCalledWith({

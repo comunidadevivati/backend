@@ -24,6 +24,10 @@ const envSchema = z
 
     PASSWORD_RESET_COOLDOWN_SECONDS: z.coerce.number().int().min(0).max(3600).default(60),
 
+    EMAIL_VERIFICATION_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(24),
+
+    EMAIL_VERIFICATION_COOLDOWN_SECONDS: z.coerce.number().int().min(0).max(3600).default(60),
+
     EMAIL_SEND_TIMEOUT_MS: z.coerce.number().int().min(1000).max(15_000).default(5000),
   })
   .superRefine((config, context) => {

@@ -10,6 +10,7 @@ const ACTIVE_USER: UserCredentials = {
   name: 'Pessoa Exemplo',
   passwordHash: 'scrypt$hash',
   status: 'ACTIVE',
+  emailVerifiedAt: null,
 };
 
 const ISSUED_TOKEN = {

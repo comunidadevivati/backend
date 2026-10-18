@@ -22,6 +22,13 @@
       "when": 1792294489955,
       "tag": "0002_common_winter_soldier",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792310606025,
+      "tag": "0003_verificacao_email",
+      "breakpoints": true
     }
   ]
 }

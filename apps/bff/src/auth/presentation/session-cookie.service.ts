@@ -1,9 +1,11 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { timingSafeEqual } from 'node:crypto';
+import { ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { getSessionCookieName } from '../domain/constants/session-cookie.constants.js';
 import {
   SESSION_ABSOLUTE_TIMEOUT_SECONDS,
   SessionService,
+  type AuthSession,
 } from '../infrastructure/session/session.service.js';
 import type { LoginResult } from '../application/login.use-case.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -15,12 +17,30 @@ export interface AuthenticatedUser {
     subject: string;
     email: string;
     name: string;
+    emailVerified: boolean;
   };
 }
 
 // Resposta das operações que abrem sessão: a sessão pública acrescida da mensagem da operação.
 export interface StartedSession extends AuthenticatedUser {
   message: string;
+}
+
+const matchesToken = (expected: string, received: string): boolean => {
+  const expectedBuffer = Buffer.from(expected);
+
+  const receivedBuffer = Buffer.from(received);
+
+  return (
+    expectedBuffer.length === receivedBuffer.length &&
+    timingSafeEqual(expectedBuffer, receivedBuffer)
+  );
+};
+
+export interface SessionContext {
+  cookieName: string;
+  sessionToken: string;
+  session: AuthSession;
 }
 
 // Cookie de sessão compartilhado pelo login, cadastro e redefinição de senha.
@@ -66,8 +86,41 @@ export class SessionCookieService {
         subject: session.user.id,
         email: session.user.email,
         name: session.user.name,
+        emailVerified: session.user.emailVerified,
       },
     };
+  }
+
+  // Sessão válida do cookie da requisição; responde 401 quando ausente, inválida ou expirada.
+  async requireSession(request: FastifyRequest): Promise<SessionContext> {
+    const cookieName = this.getCookieName();
+
+    if (!request.cookies[cookieName]) {
+      throw new UnauthorizedException('Sessão não encontrada.');
+    }
+
+    const sessionToken = this.readSessionToken(request, cookieName);
+
+    if (!sessionToken) {
+      throw new UnauthorizedException('Sessão inválida.');
+    }
+
+    const session = await this.sessionService.getSession(sessionToken);
+
+    if (!session) {
+      throw new UnauthorizedException('Sessão expirada ou inválida.');
+    }
+
+    return { cookieName, sessionToken, session };
+  }
+
+  // Operações que alteram estado exigem o header X-CSRF-Token igual ao da sessão.
+  assertCsrfToken(request: FastifyRequest, session: AuthSession): void {
+    const received = request.headers['x-csrf-token'];
+
+    if (typeof received !== 'string' || !matchesToken(session.csrfToken, received)) {
+      throw new ForbiddenException('Token CSRF inválido.');
+    }
   }
 
   readSessionToken(request: FastifyRequest, cookieName: string): string | null {
