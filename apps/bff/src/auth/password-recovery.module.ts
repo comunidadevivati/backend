@@ -4,6 +4,7 @@ import { PasswordRecoveryEmailSender } from './application/ports/password-recove
 import { RequestPasswordRecoveryUseCase } from './application/request-password-recovery.use-case.js';
 import { ResetPasswordUseCase } from './application/reset-password.use-case.js';
 import { DisabledPasswordRecoveryEmailSender } from './infrastructure/email/disabled-password-recovery-email-sender.js';
+import { ResendEmailClient } from './infrastructure/email/resend-email.client.js';
 import { ResendPasswordRecoveryEmailSender } from './infrastructure/email/resend-password-recovery-email-sender.js';
 import { PasswordResetTokenRepository } from './infrastructure/password-reset/password-reset-token.repository.js';
 import { SessionService } from './infrastructure/session/session.service.js';
@@ -20,6 +21,7 @@ import { SessionCookieService } from './presentation/session-cookie.service.js';
     PasswordResetTokenRepository,
     SessionService,
     SessionCookieService,
+    ResendEmailClient,
     DisabledPasswordRecoveryEmailSender,
     ResendPasswordRecoveryEmailSender,
     {

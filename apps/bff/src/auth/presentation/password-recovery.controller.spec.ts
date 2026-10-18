@@ -16,14 +16,24 @@ const TOKEN = 'a'.repeat(43);
 const session = {
   sessionToken: 'token-da-nova-sessao',
   csrfToken: 'csrf-da-nova-sessao',
-  user: { id: 'usuario-1', email: 'pessoa@exemplo.com', name: 'Pessoa Exemplo' },
+  user: {
+    id: 'usuario-1',
+    email: 'pessoa@exemplo.com',
+    name: 'Pessoa Exemplo',
+    emailVerified: true,
+  },
 };
 
 const startedSession = {
   authenticated: true,
   message: 'Senha redefinida com sucesso.',
   csrfToken: 'csrf-da-nova-sessao',
-  user: { subject: 'usuario-1', email: 'pessoa@exemplo.com', name: 'Pessoa Exemplo' },
+  user: {
+    subject: 'usuario-1',
+    email: 'pessoa@exemplo.com',
+    name: 'Pessoa Exemplo',
+    emailVerified: true,
+  },
 };
 
 const request = {} as FastifyRequest;

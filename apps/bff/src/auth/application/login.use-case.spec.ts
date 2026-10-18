@@ -16,6 +16,7 @@ const activeUser: UserCredentials = {
   name: 'Usuário Exemplo',
   passwordHash: 'scrypt$hash-armazenado',
   status: 'ACTIVE',
+  emailVerifiedAt: null,
 };
 
 const createFixture = (user: UserCredentials | null) => {
@@ -54,6 +55,7 @@ describe('LoginUseCase — sucesso', () => {
         id: activeUser.id,
         email: 'usuario@exemplo.com',
         name: 'Usuário Exemplo',
+        emailVerified: false,
       },
     });
 

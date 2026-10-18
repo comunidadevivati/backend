@@ -1,10 +1,8 @@
-import { timingSafeEqual } from 'node:crypto';
 import {
   BadRequestException,
   Body,
   ConflictException,
   Controller,
-  ForbiddenException,
   Get,
   Header,
   HttpCode,
@@ -17,7 +15,7 @@ import {
 import { z } from 'zod';
 import { LoginUseCase } from '../application/login.use-case.js';
 import { RegisterUserUseCase } from '../application/register-user.use-case.js';
-import { SessionService, type AuthSession } from '../infrastructure/session/session.service.js';
+import { SessionService } from '../infrastructure/session/session.service.js';
 import { registerRequestSchema } from './register-request.schema.js';
 import {
   SessionCookieService,
@@ -34,12 +32,6 @@ const loginRequestSchema = z.object({
 export interface LoggedOutUser {
   authenticated: false;
   message: string;
-}
-
-interface SessionContext {
-  cookieName: string;
-  sessionToken: string;
-  session: AuthSession;
 }
 
 @Controller('auth')
@@ -121,7 +113,7 @@ export class AuthController {
   @Get('me')
   @Header('Cache-Control', 'no-store')
   async me(@Req() request: FastifyRequest): Promise<AuthenticatedUser> {
-    const { session } = await this.getSessionContext(request);
+    const { session } = await this.sessionCookies.requireSession(request);
 
     return {
       authenticated: true,
@@ -130,6 +122,7 @@ export class AuthController {
         subject: session.userId,
         email: session.email,
         name: session.name,
+        emailVerified: session.emailVerified,
       },
     };
   }
@@ -141,51 +134,14 @@ export class AuthController {
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<LoggedOutUser> {
-    const { cookieName, sessionToken, session } = await this.getSessionContext(request);
+    const { cookieName, sessionToken, session } = await this.sessionCookies.requireSession(request);
 
-    const csrfToken = request.headers['x-csrf-token'];
-
-    if (typeof csrfToken !== 'string' || !this.matchesCsrfToken(session.csrfToken, csrfToken)) {
-      throw new ForbiddenException('Token CSRF inválido.');
-    }
+    this.sessionCookies.assertCsrfToken(request, session);
 
     await this.sessionService.deleteSession(sessionToken);
 
     reply.clearCookie(cookieName, { path: '/' });
 
     return { authenticated: false, message: 'O logout foi efetuado com sucesso.' };
-  }
-
-  private async getSessionContext(request: FastifyRequest): Promise<SessionContext> {
-    const cookieName = this.sessionCookies.getCookieName();
-
-    if (!request.cookies[cookieName]) {
-      throw new UnauthorizedException('Sessão não encontrada.');
-    }
-
-    const sessionToken = this.sessionCookies.readSessionToken(request, cookieName);
-
-    if (!sessionToken) {
-      throw new UnauthorizedException('Sessão inválida.');
-    }
-
-    const session = await this.sessionService.getSession(sessionToken);
-
-    if (!session) {
-      throw new UnauthorizedException('Sessão expirada ou inválida.');
-    }
-
-    return { cookieName, sessionToken, session };
-  }
-
-  private matchesCsrfToken(expected: string, received: string): boolean {
-    const expectedBuffer = Buffer.from(expected);
-
-    const receivedBuffer = Buffer.from(received);
-
-    return (
-      expectedBuffer.length === receivedBuffer.length &&
-      timingSafeEqual(expectedBuffer, receivedBuffer)
-    );
   }
 }

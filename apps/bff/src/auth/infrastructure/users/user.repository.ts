@@ -11,6 +11,7 @@ export interface UserCredentials {
   name: string;
   passwordHash: string;
   status: 'ACTIVE' | 'SUSPENDED';
+  emailVerifiedAt: Date | null;
 }
 
 export interface NewUser {
@@ -38,6 +39,7 @@ export class UserRepository {
         name: users.name,
         passwordHash: users.passwordHash,
         status: users.status,
+        emailVerifiedAt: users.emailVerifiedAt,
       })
       .from(users)
       .where(eq(users.email, normalizeEmail(email)))

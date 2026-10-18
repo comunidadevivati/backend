@@ -82,7 +82,8 @@ O navegador não armazena tokens em localStorage ou sessionStorage.
   o usuário já fica autenticado (sessão criada pelo mesmo serviço do login, revogando a anterior do
   navegador, sem consumir tentativa de login); `409` para e-mail já
   cadastrado (comparação sem diferenciar maiúsculas); `400` com `fields` listando somente os nomes
-  dos campos recusados. As regras de nome, telefone e força de senha ficam em
+  dos campos recusados. O cadastro também envia o link de verificação do e-mail (a conta nasce com
+  `emailVerified: false`); uma falha nesse envio não desfaz o cadastro. As regras de nome, telefone e força de senha ficam em
   `src/auth/domain/policies` e espelham as validações do frontend.
 - `POST /auth/login`: `200` com o cookie de sessão e
   `{ authenticated: true, message: "Usuário autenticado com sucesso.", csrfToken, user }`; `400` para
@@ -95,7 +96,14 @@ O navegador não armazena tokens em localStorage ou sessionStorage.
 - `POST /auth/password-reset`: `{ "token", "password" }`; valida o link e a política de senha,
   redefine a senha, revoga todas as sessões e abre uma nova sessão no navegador que redefiniu (mesma
   resposta do login, com a mensagem `Senha redefinida com sucesso.`). O token não pode ser reutilizado.
-- `GET /auth/me`: `{ authenticated, csrfToken, user: { subject, email, name } }`. O token CSRF
+- `POST /auth/email-verification`: `{ "token" }`; público (o link pode ser aberto em outro
+  aparelho). Consome o token de uso único (validade de 24 horas) e marca o e-mail como verificado;
+  `400` para link inválido, expirado ou já usado.
+- `POST /auth/email-verification/resend`: exige a sessão e o header `X-CSRF-Token`. Envia um novo
+  link para o e-mail da sessão e invalida os anteriores; `409` se o e-mail já foi verificado, `429`
+  durante o intervalo mínimo entre envios (60 segundos) e `503` se o provedor de e-mail falhar.
+- `GET /auth/me`: `{ authenticated, csrfToken, user: { subject, email, name, emailVerified } }`
+  (o mesmo `user` de login, cadastro e redefinição de senha). O token CSRF
   deve permanecer apenas em memória no frontend. Renova a expiração por inatividade.
 - `POST /auth/logout`: exige o header `X-CSRF-Token`, revoga a sessão no banco e remove o cookie.
   Responde `200` com `{ "authenticated": false, "message": "O logout foi efetuado com sucesso." }`.

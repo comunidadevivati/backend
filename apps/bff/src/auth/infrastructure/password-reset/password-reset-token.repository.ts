@@ -19,6 +19,7 @@ export interface IssuedPasswordResetToken {
 
 export interface PasswordResetUser {
   email: string;
+  emailVerifiedAt: Date | null;
   id: string;
   name: string;
   passwordHash: string;
@@ -110,6 +111,7 @@ export class PasswordResetTokenRepository {
         email: users.email,
         name: users.name,
         passwordHash: users.passwordHash,
+        emailVerifiedAt: users.emailVerifiedAt,
       })
       .from(passwordResetTokens)
       .innerJoin(users, eq(users.id, passwordResetTokens.userId))

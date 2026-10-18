@@ -11,6 +11,7 @@ const authenticatedSession: AuthSession = {
   userId: '0199f0a0-0000-7000-8000-000000000001',
   email: 'usuario@exemplo.com',
   name: 'Usuário Exemplo',
+  emailVerified: false,
   csrfToken: 'csrf-token-teste',
 };
 
@@ -21,6 +22,7 @@ const loginResult: LoginResult = {
     id: '0199f0a0-0000-7000-8000-000000000001',
     email: 'usuario@exemplo.com',
     name: 'Usuário Exemplo',
+    emailVerified: true,
   },
 };
 
@@ -110,6 +112,7 @@ describe('AuthController — login', () => {
       message: 'Usuário autenticado com sucesso.',
       csrfToken: 'novo-csrf-token',
       user: {
+        emailVerified: true,
         subject: loginResult.user.id,
         email: 'usuario@exemplo.com',
         name: 'Usuário Exemplo',
@@ -198,6 +201,7 @@ describe('AuthController — sessão atual', () => {
       authenticated: true,
       csrfToken: 'csrf-token-teste',
       user: {
+        emailVerified: false,
         subject: authenticatedSession.userId,
         email: 'usuario@exemplo.com',
         name: 'Usuário Exemplo',

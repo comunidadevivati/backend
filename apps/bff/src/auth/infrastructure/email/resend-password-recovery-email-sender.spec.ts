@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DisabledPasswordRecoveryEmailSender } from './disabled-password-recovery-email-sender.js';
+import { ResendEmailClient } from './resend-email.client.js';
 import { ResendPasswordRecoveryEmailSender } from './resend-password-recovery-email-sender.js';
 import type { ConfigService } from '@nestjs/config';
 
@@ -13,6 +14,9 @@ const config = {
 const configService = {
   getOrThrow: (key: keyof typeof config) => config[key],
 } as unknown as ConfigService;
+
+const createSender = () =>
+  new ResendPasswordRecoveryEmailSender(configService, new ResendEmailClient(configService));
 
 const message = {
   email: 'pessoa@exemplo.com',
@@ -34,7 +38,7 @@ describe('ResendPasswordRecoveryEmailSender', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    await new ResendPasswordRecoveryEmailSender(configService).send(message);
+    await createSender().send(message);
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.resend.com/emails',
@@ -90,9 +94,9 @@ describe('ResendPasswordRecoveryEmailSender', () => {
       vi.fn(() => Promise.resolve(new Response(null, { status: 429 }))),
     );
 
-    await expect(
-      new ResendPasswordRecoveryEmailSender(configService).send(message),
-    ).rejects.toThrow('Resend recusou o envio com status 429.');
+    await expect(createSender().send(message)).rejects.toThrow(
+      'Resend recusou o envio com status 429.',
+    );
   });
 
   it('deve permitir o adaptador desabilitado no desenvolvimento', async () => {

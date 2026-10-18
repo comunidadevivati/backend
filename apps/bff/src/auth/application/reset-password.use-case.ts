@@ -54,7 +54,12 @@ export class ResetPasswordUseCase {
       session: {
         sessionToken,
         csrfToken,
-        user: { id: user.id, email: user.email, name: user.name },
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          emailVerified: user.emailVerifiedAt !== null,
+        },
       },
     };
   }

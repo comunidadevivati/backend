@@ -8,6 +8,10 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, expect } from 'vitest';
 import {
+  EmailVerificationEmailSender,
+  type SendEmailVerificationEmail,
+} from '../../../src/auth/application/ports/email-verification-email-sender.js';
+import {
   PasswordRecoveryEmailSender,
   type SendPasswordRecoveryEmail,
 } from '../../../src/auth/application/ports/password-recovery-email-sender.js';
@@ -29,6 +33,8 @@ export let app: NestFastifyApplication;
 export let connection: DatabaseConnection;
 
 export const sentPasswordRecoveryEmails: SendPasswordRecoveryEmail[] = [];
+
+export const sentEmailVerificationEmails: SendEmailVerificationEmail[] = [];
 
 export const sha256 = (value: string) => createHash('sha256').update(value).digest('base64url');
 
@@ -52,6 +58,16 @@ export const resetPassword = (token: string, password: string) =>
     method: 'POST',
     url: '/auth/password-reset',
     payload: { token, password },
+  });
+
+export const verifyEmail = (token: string) =>
+  app.inject({ method: 'POST', url: '/auth/email-verification', payload: { token } });
+
+export const resendEmailVerification = (sessionCookie: string, csrfToken?: string) =>
+  app.inject({
+    method: 'POST',
+    url: '/auth/email-verification/resend',
+    headers: { cookie: sessionCookie, ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}) },
   });
 
 export const getMe = (sessionCookie: string) =>
@@ -117,6 +133,8 @@ beforeAll(async () => {
     EMAIL_PROVIDER: 'disabled',
     PASSWORD_RESET_TTL_MINUTES: '15',
     PASSWORD_RESET_COOLDOWN_SECONDS: '0',
+    EMAIL_VERIFICATION_TTL_HOURS: '24',
+    EMAIL_VERIFICATION_COOLDOWN_SECONDS: '0',
     EMAIL_SEND_TIMEOUT_MS: '5000',
   });
 
@@ -128,6 +146,14 @@ beforeAll(async () => {
     .useValue({
       send: (message: SendPasswordRecoveryEmail) => {
         sentPasswordRecoveryEmails.push(message);
+
+        return Promise.resolve();
+      },
+    })
+    .overrideProvider(EmailVerificationEmailSender)
+    .useValue({
+      send: (message: SendEmailVerificationEmail) => {
+        sentEmailVerificationEmails.push(message);
 
         return Promise.resolve();
       },

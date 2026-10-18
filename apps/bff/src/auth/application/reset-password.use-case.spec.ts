@@ -21,6 +21,7 @@ const createFixture = async (hasUser = true) => {
             email: 'pessoa@exemplo.com',
             name: 'Pessoa Exemplo',
             passwordHash,
+            emailVerifiedAt: null,
           }
         : null,
     ),
@@ -49,7 +50,12 @@ describe('ResetPasswordUseCase', () => {
       session: {
         sessionToken: 'token-da-nova-sessao',
         csrfToken: 'csrf-da-nova-sessao',
-        user: { id: 'usuario-1', email: 'pessoa@exemplo.com', name: 'Pessoa Exemplo' },
+        user: {
+          id: 'usuario-1',
+          email: 'pessoa@exemplo.com',
+          name: 'Pessoa Exemplo',
+          emailVerified: false,
+        },
       },
     });
 

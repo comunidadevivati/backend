@@ -15,6 +15,7 @@ export interface LoginResult {
     id: string;
     email: string;
     name: string;
+    emailVerified: boolean;
   };
 }
 
@@ -53,7 +54,12 @@ export class LoginUseCase {
     return {
       sessionToken: token,
       csrfToken,
-      user: { id: user.id, email: user.email, name: user.name },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        emailVerified: user.emailVerifiedAt !== null,
+      },
     };
   }
 }

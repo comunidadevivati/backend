@@ -29,6 +29,7 @@ describe('POST /auth/register (PostgreSQL real)', () => {
         subject: expect.stringMatching(/^[\da-f-]{36}$/u),
         email: 'joana.pereira@exemplo.com',
         name: 'Joana Pereira',
+        emailVerified: false,
       },
     });
 

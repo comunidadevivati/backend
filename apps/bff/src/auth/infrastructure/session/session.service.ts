@@ -9,6 +9,7 @@ export interface AuthSession {
   userId: string;
   email: string;
   name: string;
+  emailVerified: boolean;
   csrfToken: string;
 }
 
@@ -79,6 +80,7 @@ export class SessionService {
         userId: users.id,
         email: users.email,
         name: users.name,
+        emailVerified: sql<boolean>`${users.emailVerifiedAt} is not null`,
         csrfToken: sessions.csrfToken,
       });
 

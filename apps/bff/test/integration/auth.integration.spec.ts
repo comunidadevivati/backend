@@ -161,6 +161,7 @@ describe('POST /auth/login (PostgreSQL real)', () => {
         subject: expect.stringMatching(/^[\da-f-]{36}$/u),
         email: 'membro@exemplo.com',
         name: 'Membro Ativo',
+        emailVerified: false,
       },
     });
 
