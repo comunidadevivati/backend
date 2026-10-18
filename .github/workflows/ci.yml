@@ -1,10 +1,11 @@
 name: Backend CI
 
 on:
+  # main publica produção e homologation publica HML no Render (autoDeployTrigger: checksPass).
   push:
-    branches: [main]
+    branches: [main, homologation]
   pull_request:
-    branches: [main]
+    branches: [main, homologation]
     # PRs de release só alteram estes arquivos e são mesclados pelo
     # workflow Release Please; o CI ficaria aguardando aprovação até expirar.
     paths-ignore:
@@ -32,19 +33,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      # Fluxo: feat|fix|hotfix|release|renovate -> homologation -> main.
+      # A main só recebe a homologation e o PR de release gerado pelo Release Please.
       - name: Validar nome da branch
         if: github.event_name == 'pull_request'
         env:
           BRANCH_NAME: ${{ github.head_ref }}
+          BASE_BRANCH: ${{ github.base_ref }}
         run: |
-          if [[ "$BRANCH_NAME" =~ ^(feat|fix|hotfix)/[a-z0-9][a-z0-9._-]*$ ]] ||
-             [[ "$BRANCH_NAME" =~ ^release/[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
-             [[ "$BRANCH_NAME" =~ ^release-please--branches--.+$ ]] ||
-             [[ "$BRANCH_NAME" =~ ^renovate/.+$ ]]; then
-            echo "Branch permitida: $BRANCH_NAME"
+          if [[ "$BASE_BRANCH" == "main" ]]; then
+            if [[ "$BRANCH_NAME" == "homologation" ]] ||
+               [[ "$BRANCH_NAME" =~ ^release-please--branches--main(--.+)?$ ]]; then
+              echo "Branch permitida para main: $BRANCH_NAME"
+            else
+              echo "::error::A main só aceita PRs da branch homologation: $BRANCH_NAME"
+              exit 1
+            fi
+          elif [[ "$BRANCH_NAME" =~ ^(feat|fix|hotfix)/[a-z0-9][a-z0-9._-]*$ ]] ||
+               [[ "$BRANCH_NAME" =~ ^release/[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+               [[ "$BRANCH_NAME" =~ ^renovate/.+$ ]] ||
+               [[ "$BRANCH_NAME" == "main" ]]; then
+            echo "Branch permitida para $BASE_BRANCH: $BRANCH_NAME"
           else
             echo "::error::Nome de branch inválido: $BRANCH_NAME"
-            echo "Use feat/, fix/, hotfix/ ou release/X.Y.Z."
+            echo "Use feat/, fix/, hotfix/ ou release/X.Y.Z (ou main, para sincronizar)."
             exit 1
           fi
 

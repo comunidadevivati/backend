@@ -50,3 +50,56 @@ services:
         value: '60'
       - key: EMAIL_SEND_TIMEOUT_MS
         value: '5000'
+
+  # Homologação (HML): publicada a partir da branch homologation, com banco Neon próprio.
+  - type: web
+    name: comvivati-core-api-hml
+    runtime: docker
+    plan: free
+    region: virginia
+    branch: homologation
+    autoDeployTrigger: checksPass
+    dockerfilePath: ./apps/core-api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: '10000'
+
+  - type: web
+    name: comvivati-bff-hml
+    runtime: docker
+    plan: free
+    region: virginia
+    branch: homologation
+    autoDeployTrigger: checksPass
+    dockerfilePath: ./apps/bff/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: BFF_PORT
+        value: '10000'
+      - key: BFF_BASE_URL
+        value: https://hml.comvivaeficaz.com.br
+      - key: WEB_BASE_URL
+        value: https://hml.comvivaeficaz.com.br
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: EMAIL_PROVIDER
+        value: resend
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: Comunidade Viva e Eficaz (HML) <seguranca@mail.comvivaeficaz.com.br>
+      - key: PASSWORD_RESET_TTL_MINUTES
+        value: '15'
+      - key: PASSWORD_RESET_COOLDOWN_SECONDS
+        value: '60'
+      - key: EMAIL_SEND_TIMEOUT_MS
+        value: '5000'
