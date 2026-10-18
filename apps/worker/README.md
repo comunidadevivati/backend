@@ -1,5 +1,9 @@
 # Worker — Comunidade Viva e Eficaz
 
+> **Atenção:** Redis foi removido do projeto pelo
+> [ADR 0003](../../docs/adr/0003-autenticacao-email-senha-postgresql.md). As referências a BullMQ e
+> Redis abaixo descrevem o plano anterior e precisam ser revistas antes da implementação do Worker.
+
 ## 1. Objetivo
 
 O Worker é uma aplicação Node.js independente, responsável pelo processamento assíncrono de tarefas da plataforma.

@@ -1,6 +1,7 @@
 # ADR 0002 — Infraestrutura gratuita para MVP e homologação
 
-- Status: Accepted
+- Status: Accepted (Keycloak e Upstash Redis substituídos pelo
+  [ADR 0003](0003-autenticacao-email-senha-postgresql.md))
 - Data: 2026-10-14
 
 ## Contexto

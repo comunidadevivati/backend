@@ -64,7 +64,8 @@ Convenções de engenharia:
 
 Documentação de segurança:
 
-- Keycloak e OIDC.
+- Login por e-mail e senha (ADR 0003).
+- Recuperação de senha com Resend (ADR 0004).
 - Sessões seguras.
 - RBAC, ABAC e ReBAC.
 - Escopos organizacionais.
@@ -80,14 +81,14 @@ Nunca documentar senhas, tokens ou segredos em texto puro.
 Documentação operacional:
 
 - Cloudflare Workers Static Assets para o frontend.
-- Render Free para BFF, Core API e Keycloak durante MVP e homologação.
-- Neon Free para PostgreSQL e Upstash Free para Redis durante MVP e homologação.
+- Render Free para BFF e Core API durante MVP e homologação.
+- Neon Free para PostgreSQL durante MVP e homologação.
 - Cloudflare Workers Static Assets.
 - Cloudflare R2.
 - GitHub Actions.
 - Render Blueprint conectado ao GitHub.
-- PostgreSQL e Redis gerenciados.
-- Keycloak e workers contínuos.
+- PostgreSQL gerenciado.
+- Workers contínuos.
 - Backups e Disaster Recovery.
 - Observabilidade.
 

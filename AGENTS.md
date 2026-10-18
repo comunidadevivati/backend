@@ -53,7 +53,7 @@ Este arquivo está no repositório **backend**, mas o trabalho não está limita
 
 - Ao criar ou alterar endpoints, contratos, DTOs, autenticação, autorização, sessão, mensagens de erro, paginação ou qualquer comportamento consumido pela interface, **verificar os consumidores no frontend**.
 - Quando necessário, **adaptar o frontend no próprio repositório**, incluindo cliente HTTP, tipos, validações, rotas, páginas, estados, tratamento de erro e testes, para demonstrar o funcionamento da alteração feita no backend.
-- Para fluxos OIDC, validar a jornada real: frontend → `/auth/login` no BFF → Keycloak → `/auth/callback` no BFF → frontend → `/auth/me`, incluindo login, sessão, acesso protegido e logout quando implementado. Confirmar URLs e portas reais nas configurações antes de testar; referências históricas de desenvolvimento são frontend `http://localhost:5173` e BFF `http://localhost:3000`.
+- Para autenticação, validar a jornada real: formulário de login no frontend → `POST /auth/login` no BFF → cookie de sessão → `/auth/me` → rota protegida → `POST /auth/logout`. Confirmar URLs e portas reais nas configurações antes de testar; referências históricas de desenvolvimento são frontend `http://localhost:5173` e BFF `http://localhost:3000`.
 - Respeitar o modelo BFF: credenciais e tokens sensíveis permanecem no servidor; a aplicação web não deve receber segredos nem persistir tokens de autenticação em `localStorage`, `sessionStorage` ou código-fonte. Verificar cookies HttpOnly, políticas SameSite/Secure, CORS e credenciais HTTP conforme ambiente.
 - Preferir integração a partir de contratos efetivos (OpenAPI/DTOs/tipos e respostas reais); **não inventar endpoints, formatos de resposta ou permissões**. Não contornar autenticação ou autorização com mocks como solução de produção.
 - Se a tarefa for exclusivamente interna ao backend e não houver efeito observável no frontend, registrar essa constatação e não modificar a aplicação web desnecessariamente.
@@ -63,7 +63,7 @@ Este arquivo está no repositório **backend**, mas o trabalho não está limita
 1. Inspecionar `git status --short`, branch, diferenças relevantes e arquivos não rastreados **separadamente em cada repositório envolvido**. Preservar alterações locais e não sobrescrever o trabalho do usuário.
 2. Identificar o contrato entre BFF/Core API/frontend e o comportamento a validar. Distinguir decisões arquiteturais aprovadas de propostas ainda pendentes.
 3. Implementar a menor alteração consistente no backend e, **quando necessário**, no frontend, respeitando a arquitetura e as regras locais de cada projeto.
-4. Executar scripts **existentes** de formatação, lint, typecheck, testes e build nos projetos afetados; consultar `package.json` antes de escolher comandos. Executar teste integrado ou manual ponta a ponta quando depender de Keycloak, Redis, PostgreSQL ou serviços locais. Não afirmar que houve integração real se foram executados apenas testes unitários.
+4. Executar scripts **existentes** de formatação, lint, typecheck, testes e build nos projetos afetados; consultar `package.json` antes de escolher comandos. Executar teste integrado ou manual ponta a ponta quando depender de PostgreSQL ou serviços locais. Não afirmar que houve integração real se foram executados apenas testes unitários.
 5. Relatar resultados por repositório: arquivos modificados, testes executados, cobertura medida, falhas, dependências externas e verificações não realizadas. As 39 provas unitárias e a cobertura de 100% anteriormente observadas se referem ao **escopo configurado naquele momento**; não pressupor cobertura integral de toda a aplicação.
 6. Não executar `git add .`, `commit`, `push`, `merge`, `rebase`, reset destrutivo ou alteração de ambiente de produção sem autorização explícita. Se aprovados, criar **commits separados por repositório**, no padrão semântico português brasileiro definido abaixo; jamais tratar os dois repositórios como uma única operação Git.
 
@@ -300,13 +300,13 @@ Do not use cross-context database access as a shortcut.
 
 ## 10. Identity and Authorization
 
-Identity Provider: Keycloak.
+Authentication (ADR 0003):
 
-Authentication:
+- Email and password login handled by the BFF; no external Identity Provider.
 
-- OIDC Authorization Code + PKCE.
+- Passwords hashed with scrypt; users and sessions in the BFF-owned PostgreSQL schema `auth`.
 
-- Server-side BFF sessions.
+- Server-side BFF sessions stored in PostgreSQL (opaque token, only its hash persisted).
 
 - Secure, HttpOnly cookies.
 
@@ -374,9 +374,7 @@ Do not assume unresolved protocol choices are approved.
 
 - Inbox/deduplication for critical consumers.
 
-- BullMQ + Redis.
-
-- BullMQ Job Schedulers.
+- Queue technology to be redefined (Redis/BullMQ removed by ADR 0003).
 
 - Exponential backoff.
 
@@ -460,11 +458,11 @@ Free-tier topology for MVP and homologation.
 
 - Cloudflare R2 for S3-compatible object storage.
 
-- Render Free web services for BFF, Core API and Keycloak during MVP and homologation.
+- Render Free web services for BFF and Core API during MVP and homologation.
 
-- Neon Free for PostgreSQL and Upstash Free for Redis during MVP and homologation.
+- Neon Free for PostgreSQL during MVP and homologation.
 
-- BullMQ worker deployment is postponed while no zero-cost continuous runtime is approved.
+- Worker deployment is postponed while no zero-cost continuous runtime is approved.
 
 - GitHub Actions for CI/CD.
 
@@ -578,7 +576,7 @@ Do not invent final choices for:
 
   concurrent with membership registration.
 
-- Final production providers for PostgreSQL, Redis and Keycloak.
+- Final production provider for PostgreSQL.
 
 - Email provider.
 
