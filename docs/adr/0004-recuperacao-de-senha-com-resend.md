@@ -24,7 +24,8 @@ MVP. O worker contínuo está adiado, portanto ainda não existe uma fila própr
 - Aplicar cooldown de 60 segundos por conta. Controles adicionais por IP/origem devem ser aplicados
   no proxy de borda antes de produção.
 - `POST /auth/password-reset` valida o token e a política de senha, troca o hash dentro de uma
-  transação e revoga todas as sessões do usuário.
+  transação, revoga todas as sessões do usuário e abre uma nova sessão apenas no navegador que
+  concluiu a redefinição, que segue direto para a aplicação.
 - Manter `EMAIL_PROVIDER=disabled` para desenvolvimento sem envio externo. Ambientes que devem
   enviar e-mail configuram `EMAIL_PROVIDER=resend`, `RESEND_API_KEY` e `EMAIL_FROM` como secrets.
 - Enviar de forma síncrona nesta primeira versão, com timeout curto e resposta pública neutra mesmo

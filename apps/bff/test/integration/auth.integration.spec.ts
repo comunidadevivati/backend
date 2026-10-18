@@ -71,7 +71,7 @@ describe('POST /auth/password-recovery (PostgreSQL real)', () => {
 });
 
 describe('POST /auth/password-reset (PostgreSQL real)', () => {
-  it('deve trocar a senha, consumir o token e revogar todas as sessões', async () => {
+  it('deve trocar a senha, consumir o token, revogar as sessões e abrir uma nova', async () => {
     const oldSession = sessionCookieOf(await login('recuperacao@exemplo.com', PASSWORD));
 
     await requestPasswordRecovery('recuperacao@exemplo.com');
@@ -82,11 +82,15 @@ describe('POST /auth/password-reset (PostgreSQL real)', () => {
 
     expect(response.statusCode).toBe(200);
 
-    expect(response.json()).toEqual({
-      message: 'Senha redefinida com sucesso. Faça login novamente.',
+    expect(response.json()).toMatchObject({
+      authenticated: true,
+      message: 'Senha redefinida com sucesso.',
+      user: { email: 'recuperacao@exemplo.com' },
     });
 
     expect((await getMe(oldSession)).statusCode).toBe(401);
+
+    expect((await getMe(sessionCookieOf(response))).statusCode).toBe(200);
 
     expect((await login('recuperacao@exemplo.com', PASSWORD)).statusCode).toBe(401);
 

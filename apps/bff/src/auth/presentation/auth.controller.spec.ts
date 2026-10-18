@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AuthController } from './auth.controller.js';
+import { SessionCookieService } from './session-cookie.service.js';
 import type { LoginResult, LoginUseCase } from '../application/login.use-case.js';
 import type { RegisterUserUseCase } from '../application/register-user.use-case.js';
 import type { AuthSession, SessionService } from '../infrastructure/session/session.service.js';
@@ -74,7 +75,7 @@ const createFixture = ({
     loginUseCase,
     {} as RegisterUserUseCase,
     sessionService,
-    configService,
+    new SessionCookieService(sessionService, configService),
   );
 
   return { controller, deleteSession, execute, reply, request };

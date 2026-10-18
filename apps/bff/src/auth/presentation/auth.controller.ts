@@ -14,38 +14,22 @@ import {
   Res,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { z } from 'zod';
-import { LoginUseCase, type LoginResult } from '../application/login.use-case.js';
+import { LoginUseCase } from '../application/login.use-case.js';
 import { RegisterUserUseCase } from '../application/register-user.use-case.js';
-import { getSessionCookieName } from '../domain/constants/session-cookie.constants.js';
-import {
-  SESSION_ABSOLUTE_TIMEOUT_SECONDS,
-  SessionService,
-  type AuthSession,
-} from '../infrastructure/session/session.service.js';
+import { SessionService, type AuthSession } from '../infrastructure/session/session.service.js';
 import { registerRequestSchema } from './register-request.schema.js';
+import {
+  SessionCookieService,
+  type AuthenticatedUser,
+  type StartedSession,
+} from './session-cookie.service.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 const loginRequestSchema = z.object({
   email: z.string().trim().toLowerCase().pipe(z.email().max(254)),
   password: z.string().min(1).max(1024),
 });
-
-export interface AuthenticatedUser {
-  authenticated: true;
-  csrfToken: string;
-  user: {
-    subject: string;
-    email: string;
-    name: string;
-  };
-}
-
-// Resposta do login e do cadastro: a sessão pública acrescida da mensagem da operação.
-export interface StartedSession extends AuthenticatedUser {
-  message: string;
-}
 
 export interface LoggedOutUser {
   authenticated: false;
@@ -67,8 +51,8 @@ export class AuthController {
     private readonly registerUserUseCase: RegisterUserUseCase,
     @Inject(SessionService)
     private readonly sessionService: SessionService,
-    @Inject(ConfigService)
-    private readonly configService: ConfigService,
+    @Inject(SessionCookieService)
+    private readonly sessionCookies: SessionCookieService,
   ) {}
 
   // Cadastro público: cria a conta ACTIVE e já abre a sessão, com a mesma resposta do login.
@@ -98,7 +82,12 @@ export class AuthController {
       throw new ConflictException('Já existe uma conta com este e-mail.');
     }
 
-    return this.startSession(request, reply, result.session, 'Usuário cadastrado com sucesso.');
+    return this.sessionCookies.startSession(
+      request,
+      reply,
+      result.session,
+      'Usuário cadastrado com sucesso.',
+    );
   }
 
   @Post('login')
@@ -121,7 +110,12 @@ export class AuthController {
       throw new UnauthorizedException('E-mail ou senha inválidos.');
     }
 
-    return this.startSession(request, reply, result, 'Usuário autenticado com sucesso.');
+    return this.sessionCookies.startSession(
+      request,
+      reply,
+      result,
+      'Usuário autenticado com sucesso.',
+    );
   }
 
   @Get('me')
@@ -162,51 +156,14 @@ export class AuthController {
     return { authenticated: false, message: 'O logout foi efetuado com sucesso.' };
   }
 
-  // Entrega ao navegador a sessão criada no login ou no cadastro.
-  private async startSession(
-    request: FastifyRequest,
-    reply: FastifyReply,
-    session: LoginResult,
-    message: string,
-  ): Promise<StartedSession> {
-    const cookieName = this.getCookieName();
-
-    // Rotação: uma sessão anterior no mesmo navegador é revogada ao autenticar novamente.
-    const previousToken = this.readSessionToken(request, cookieName);
-
-    if (previousToken) {
-      await this.sessionService.deleteSession(previousToken);
-    }
-
-    reply.setCookie(cookieName, session.sessionToken, {
-      httpOnly: true,
-      signed: true,
-      secure: this.isHttps(),
-      sameSite: 'lax',
-      path: '/',
-      maxAge: SESSION_ABSOLUTE_TIMEOUT_SECONDS,
-    });
-
-    return {
-      authenticated: true,
-      message,
-      csrfToken: session.csrfToken,
-      user: {
-        subject: session.user.id,
-        email: session.user.email,
-        name: session.user.name,
-      },
-    };
-  }
-
   private async getSessionContext(request: FastifyRequest): Promise<SessionContext> {
-    const cookieName = this.getCookieName();
+    const cookieName = this.sessionCookies.getCookieName();
 
     if (!request.cookies[cookieName]) {
       throw new UnauthorizedException('Sessão não encontrada.');
     }
 
-    const sessionToken = this.readSessionToken(request, cookieName);
+    const sessionToken = this.sessionCookies.readSessionToken(request, cookieName);
 
     if (!sessionToken) {
       throw new UnauthorizedException('Sessão inválida.');
@@ -221,18 +178,6 @@ export class AuthController {
     return { cookieName, sessionToken, session };
   }
 
-  private readSessionToken(request: FastifyRequest, cookieName: string): string | null {
-    const cookie = request.cookies[cookieName];
-
-    if (!cookie) {
-      return null;
-    }
-
-    const unsigned = request.unsignCookie(cookie);
-
-    return unsigned.valid && unsigned.value ? unsigned.value : null;
-  }
-
   private matchesCsrfToken(expected: string, received: string): boolean {
     const expectedBuffer = Buffer.from(expected);
 
@@ -242,13 +187,5 @@ export class AuthController {
       expectedBuffer.length === receivedBuffer.length &&
       timingSafeEqual(expectedBuffer, receivedBuffer)
     );
-  }
-
-  private getCookieName(): string {
-    return getSessionCookieName(this.isHttps());
-  }
-
-  private isHttps(): boolean {
-    return new URL(this.configService.getOrThrow<string>('BFF_BASE_URL')).protocol === 'https:';
   }
 }

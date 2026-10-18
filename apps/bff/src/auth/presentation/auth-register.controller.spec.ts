@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AuthController } from './auth.controller.js';
+import { SessionCookieService } from './session-cookie.service.js';
 import type { LoginUseCase } from '../application/login.use-case.js';
 import type {
   RegisterUserResult,
@@ -23,11 +24,15 @@ const createFixture = (registerResult: RegisterUserResult = created, previousCoo
 
   const deleteSession = vi.fn(() => Promise.resolve());
 
+  const sessionService = { deleteSession } as unknown as SessionService;
+
   const controller = new AuthController(
     {} as LoginUseCase,
     { execute: executeRegister } as unknown as RegisterUserUseCase,
-    { deleteSession } as unknown as SessionService,
-    { getOrThrow: vi.fn(() => 'http://localhost:3000') } as unknown as ConfigService,
+    sessionService,
+    new SessionCookieService(sessionService, {
+      getOrThrow: vi.fn(() => 'http://localhost:3000'),
+    } as unknown as ConfigService),
   );
 
   const request = {

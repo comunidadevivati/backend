@@ -93,7 +93,8 @@ O navegador não armazena tokens em localStorage ou sessionStorage.
   conta ativa, emite um token de uso único com validade de 15 minutos e solicita o envio pelo
   provider configurado, sem revelar a existência da conta.
 - `POST /auth/password-reset`: `{ "token", "password" }`; valida o link e a política de senha,
-  redefine a senha e revoga todas as sessões. O token não pode ser reutilizado.
+  redefine a senha, revoga todas as sessões e abre uma nova sessão no navegador que redefiniu (mesma
+  resposta do login, com a mensagem `Senha redefinida com sucesso.`). O token não pode ser reutilizado.
 - `GET /auth/me`: `{ authenticated, csrfToken, user: { subject, email, name } }`. O token CSRF
   deve permanecer apenas em memória no frontend. Renova a expiração por inatividade.
 - `POST /auth/logout`: exige o header `X-CSRF-Token`, revoga a sessão no banco e remove o cookie.
@@ -136,13 +137,18 @@ local, `EMAIL_PROVIDER=disabled` mantém o fluxo sem chamada externa. Para envia
 ```text
 EMAIL_PROVIDER=resend
 RESEND_API_KEY=<secret>
-EMAIL_FROM=Comunidade Viva e Eficaz <seguranca@mail.comvivaeficaz.com.br>
+EMAIL_FROM=Comunidade Viva e Eficaz (HML) <seguranca@mail.comvivaeficaz.com.br>
 PASSWORD_RESET_TTL_MINUTES=15
 PASSWORD_RESET_COOLDOWN_SECONDS=60
 EMAIL_SEND_TIMEOUT_MS=5000
 ```
 
-A chave deve ficar somente no gerenciador de secrets do ambiente.
+O modelo do e-mail fica em `src/auth/infrastructure/email/password-recovery-email.template.ts`,
+com HTML e texto puro, nas cores do frontend. A logo (`assets/email/logo-comunidade-viva.png`)
+segue como anexo inline (CID), sem depender de uma URL pública.
+
+Localmente, use a chave de HML (`comvivati-hml`) no `.env.local`, que não é versionado. Nos
+ambientes publicados, a chave fica somente nos secrets do Render.
 
 ## 7. Comunicação BFF → Core API
 

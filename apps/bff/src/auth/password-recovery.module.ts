@@ -6,8 +6,10 @@ import { ResetPasswordUseCase } from './application/reset-password.use-case.js';
 import { DisabledPasswordRecoveryEmailSender } from './infrastructure/email/disabled-password-recovery-email-sender.js';
 import { ResendPasswordRecoveryEmailSender } from './infrastructure/email/resend-password-recovery-email-sender.js';
 import { PasswordResetTokenRepository } from './infrastructure/password-reset/password-reset-token.repository.js';
+import { SessionService } from './infrastructure/session/session.service.js';
 import { UserRepository } from './infrastructure/users/user.repository.js';
 import { PasswordRecoveryController } from './presentation/password-recovery.controller.js';
+import { SessionCookieService } from './presentation/session-cookie.service.js';
 
 @Module({
   controllers: [PasswordRecoveryController],
@@ -16,6 +18,8 @@ import { PasswordRecoveryController } from './presentation/password-recovery.con
     ResetPasswordUseCase,
     UserRepository,
     PasswordResetTokenRepository,
+    SessionService,
+    SessionCookieService,
     DisabledPasswordRecoveryEmailSender,
     ResendPasswordRecoveryEmailSender,
     {

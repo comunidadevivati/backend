@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { hashPassword } from '../infrastructure/password/password-hasher.js';
 import { ResetPasswordUseCase } from './reset-password.use-case.js';
 import type { PasswordResetTokenRepository } from '../infrastructure/password-reset/password-reset-token.repository.js';
+import type { SessionService } from '../infrastructure/session/session.service.js';
 
 const TOKEN = 'a'.repeat(43);
 
@@ -27,29 +28,42 @@ const createFixture = async (hasUser = true) => {
 
   const consume = vi.fn(() => Promise.resolve(true));
 
-  const useCase = new ResetPasswordUseCase({
-    findValidUser,
-    consume,
-  } as unknown as PasswordResetTokenRepository);
+  const createSession = vi.fn(() =>
+    Promise.resolve({ token: 'token-da-nova-sessao', csrfToken: 'csrf-da-nova-sessao' }),
+  );
 
-  return { consume, useCase };
+  const useCase = new ResetPasswordUseCase(
+    { findValidUser, consume } as unknown as PasswordResetTokenRepository,
+    { createSession } as unknown as SessionService,
+  );
+
+  return { consume, createSession, useCase };
 };
 
 describe('ResetPasswordUseCase', () => {
-  it('deve trocar uma senha forte usando token válido', async () => {
-    const { consume, useCase } = await createFixture();
+  it('deve trocar uma senha forte usando token válido e abrir uma nova sessão', async () => {
+    const { consume, createSession, useCase } = await createFixture();
 
-    await expect(useCase.execute({ token: TOKEN, password: NEW_PASSWORD })).resolves.toBe('reset');
+    await expect(useCase.execute({ token: TOKEN, password: NEW_PASSWORD })).resolves.toEqual({
+      status: 'reset',
+      session: {
+        sessionToken: 'token-da-nova-sessao',
+        csrfToken: 'csrf-da-nova-sessao',
+        user: { id: 'usuario-1', email: 'pessoa@exemplo.com', name: 'Pessoa Exemplo' },
+      },
+    });
 
     expect(consume).toHaveBeenCalledWith(TOKEN, 'usuario-1', expect.stringMatching(/^scrypt\$/u));
+
+    expect(createSession).toHaveBeenCalledWith('usuario-1');
   });
 
-  it('deve recusar token inválido ou consumido concorrentemente', async () => {
+  it('deve recusar token inválido ou consumido concorrentemente sem abrir sessão', async () => {
     const missing = await createFixture(false);
 
-    await expect(missing.useCase.execute({ token: TOKEN, password: NEW_PASSWORD })).resolves.toBe(
-      'invalid_token',
-    );
+    await expect(
+      missing.useCase.execute({ token: TOKEN, password: NEW_PASSWORD }),
+    ).resolves.toEqual({ status: 'invalid_token' });
 
     const concurrent = await createFixture();
 
@@ -57,7 +71,9 @@ describe('ResetPasswordUseCase', () => {
 
     await expect(
       concurrent.useCase.execute({ token: TOKEN, password: NEW_PASSWORD }),
-    ).resolves.toBe('invalid_token');
+    ).resolves.toEqual({ status: 'invalid_token' });
+
+    expect(concurrent.createSession).not.toHaveBeenCalled();
   });
 
   it.each([CURRENT_PASSWORD, 'Pessoa#Segura2027'])(
@@ -65,7 +81,9 @@ describe('ResetPasswordUseCase', () => {
     async (password) => {
       const { consume, useCase } = await createFixture();
 
-      await expect(useCase.execute({ token: TOKEN, password })).resolves.toBe('weak_password');
+      await expect(useCase.execute({ token: TOKEN, password })).resolves.toEqual({
+        status: 'weak_password',
+      });
 
       expect(consume).not.toHaveBeenCalled();
     },

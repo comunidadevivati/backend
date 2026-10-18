@@ -6,11 +6,15 @@ import {
   HttpCode,
   Inject,
   Post,
+  Req,
+  Res,
 } from '@nestjs/common';
 import { z } from 'zod';
 import { RequestPasswordRecoveryUseCase } from '../application/request-password-recovery.use-case.js';
 import { ResetPasswordUseCase } from '../application/reset-password.use-case.js';
 import { PASSWORD_MAX_LENGTH } from '../domain/policies/password-policy.js';
+import { SessionCookieService, type StartedSession } from './session-cookie.service.js';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
 const passwordRecoveryRequestSchema = z.object({
   email: z.string().trim().toLowerCase().pipe(z.email().max(254)),
@@ -35,6 +39,8 @@ export class PasswordRecoveryController {
     private readonly requestPasswordRecoveryUseCase: RequestPasswordRecoveryUseCase,
     @Inject(ResetPasswordUseCase)
     private readonly resetPasswordUseCase: ResetPasswordUseCase,
+    @Inject(SessionCookieService)
+    private readonly sessionCookies: SessionCookieService,
   ) {}
 
   @Post('password-recovery')
@@ -53,7 +59,12 @@ export class PasswordRecoveryController {
   @Post('password-reset')
   @HttpCode(200)
   @Header('Cache-Control', 'no-store')
-  async reset(@Body() body: unknown): Promise<PasswordRecoveryResponse> {
+  // Após redefinir, abre uma nova sessão: a pessoa segue direto para a aplicação.
+  async reset(
+    @Body() body: unknown,
+    @Req() httpRequest: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<StartedSession> {
     const request = passwordResetRequestSchema.safeParse(body);
 
     if (!request.success) {
@@ -62,14 +73,19 @@ export class PasswordRecoveryController {
 
     const result = await this.resetPasswordUseCase.execute(request.data);
 
-    if (result === 'invalid_token') {
+    if (result.status === 'invalid_token') {
       throw new BadRequestException('Link de recuperação inválido ou expirado.');
     }
 
-    if (result === 'weak_password') {
+    if (result.status === 'weak_password') {
       throw new BadRequestException('A nova senha não atende aos requisitos de segurança.');
     }
 
-    return { message: 'Senha redefinida com sucesso. Faça login novamente.' };
+    return this.sessionCookies.startSession(
+      httpRequest,
+      reply,
+      result.session,
+      'Senha redefinida com sucesso.',
+    );
   }
 }
