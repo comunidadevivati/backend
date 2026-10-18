@@ -1,28 +1,48 @@
 import { z } from 'zod';
 
-const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+const envSchema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 
-  BFF_PORT: z.coerce.number().int().min(1).max(65535),
+    BFF_PORT: z.coerce.number().int().min(1).max(65535),
 
-  BFF_BASE_URL: z.url(),
+    BFF_BASE_URL: z.url(),
 
-  BFF_OIDC_CALLBACK_URL: z.url(),
+    WEB_BASE_URL: z.url(),
 
-  WEB_BASE_URL: z.url(),
+    COOKIE_SECRET: z.string().min(32),
 
-  KEYCLOAK_ISSUER: z.url(),
+    DATABASE_URL: z.url({ protocol: /^postgres(?:ql)?$/u }),
 
-  KEYCLOAK_CLIENT_ID: z.string().min(1),
+    EMAIL_PROVIDER: z.enum(['disabled', 'resend']).default('disabled'),
 
-  KEYCLOAK_CLIENT_SECRET: z.string().min(1),
+    RESEND_API_KEY: z.string().startsWith('re_').optional(),
 
-  COOKIE_SECRET: z.string().min(32),
+    EMAIL_FROM: z.string().min(3).optional(),
 
-  SESSION_ENCRYPTION_KEY: z.string().regex(/^[A-Za-z0-9_-]{43}$/u),
+    PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(60).default(15),
 
-  REDIS_URL: z.url(),
-});
+    PASSWORD_RESET_COOLDOWN_SECONDS: z.coerce.number().int().min(0).max(3600).default(60),
+
+    EMAIL_VERIFICATION_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(24),
+
+    EMAIL_VERIFICATION_COOLDOWN_SECONDS: z.coerce.number().int().min(0).max(3600).default(60),
+
+    EMAIL_SEND_TIMEOUT_MS: z.coerce.number().int().min(1000).max(15_000).default(5000),
+  })
+  .superRefine((config, context) => {
+    if (config.EMAIL_PROVIDER !== 'resend') {
+      return;
+    }
+
+    if (!config.RESEND_API_KEY) {
+      context.addIssue({ code: 'custom', path: ['RESEND_API_KEY'], message: 'Required' });
+    }
+
+    if (!config.EMAIL_FROM) {
+      context.addIssue({ code: 'custom', path: ['EMAIL_FROM'], message: 'Required' });
+    }
+  });
 
 export const validateEnv = (config: Record<string, unknown>) => {
   const result = envSchema.safeParse(config);

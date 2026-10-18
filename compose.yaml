@@ -20,47 +20,38 @@ services:
     networks:
       - backend
 
-  redis:
-    image: redis:8.10.2-alpine
-    restart: unless-stopped
+  # Perfil "app": sobe as mesmas imagens publicadas no Render (docker compose --profile app up).
+  # Usa as portas do `pnpm dev:bff`/`dev:api`; não rode os dois modos ao mesmo tempo.
+  bff:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: apps/bff/Dockerfile
+    env_file:
+      - path: apps/bff/.env.local
+        required: false
     environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?Obrigatório}
-    command:
-      - /bin/sh
-      - -c
-      - exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"
+      BFF_PORT: '10000'
+      BFF_BASE_URL: http://localhost:3000
+      WEB_BASE_URL: http://localhost:5173
+      DATABASE_URL: postgresql://comunidade_viva:${POSTGRES_PASSWORD:?Obrigatório}@postgres:5432/comunidade_viva
     ports:
-      - '127.0.0.1:6379:6379'
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ['CMD-SHELL', 'redis-cli -a "$$REDIS_PASSWORD" --no-auth-warning ping | grep -q PONG']
-      interval: 10s
-      timeout: 5s
-      retries: 10
+      - '127.0.0.1:3000:10000'
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - backend
 
-  keycloak:
-    image: quay.io/keycloak/keycloak:26.8.0
-    restart: unless-stopped
-    command: start-dev
+  core-api:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: apps/core-api/Dockerfile
     environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: admin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Obrigatório}
-      KC_HEALTH_ENABLED: 'true'
+      PORT: '10000'
     ports:
-      - '127.0.0.1:8080:8080'
-    volumes:
-      - keycloak_data:/opt/keycloak/data
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - 'exec 3<>/dev/tcp/127.0.0.1/9000 && printf "GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3 && grep -q "200 OK" <&3'
-      interval: 15s
-      timeout: 10s
-      retries: 20
-      start_period: 60s
+      - '127.0.0.1:3001:10000'
     networks:
       - backend
 
@@ -70,5 +61,3 @@ networks:
 
 volumes:
   postgres_data:
-  redis_data:
-  keycloak_data:

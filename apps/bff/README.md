@@ -11,6 +11,7 @@ Tecnologias:
 - TypeScript
 - Node.js
 - Zod para validação de contratos
+- Drizzle ORM e PostgreSQL para usuários e sessões
 
 O BFF é uma aplicação independente, com build e deploy próprios.
 
@@ -18,9 +19,8 @@ O BFF é uma aplicação independente, com build e deploy próprios.
 
 O BFF deve:
 
-- Integrar a aplicação web com o Keycloak.
-- Executar o fluxo OIDC Authorization Code com PKCE.
-- Gerenciar sessões no servidor.
+- Autenticar usuários por e-mail e senha.
+- Gerenciar sessões no servidor (PostgreSQL, schema `auth`).
 - Utilizar cookies Secure, HttpOnly e SameSite apropriado.
 - Implementar proteção contra CSRF.
 - Agregar respostas de APIs quando necessário.
@@ -34,11 +34,12 @@ O BFF deve:
 O BFF não deve:
 
 - Implementar regras centrais de negócio.
-- Acessar diretamente os schemas PostgreSQL dos Bounded Contexts.
+- Acessar diretamente os schemas PostgreSQL dos Bounded Contexts. O único schema do BFF é `auth`
+  (ADR 0003).
 - Executar migrations dos domínios.
 - Gerenciar roles, grants ou políticas de autorização de negócio.
 - Confiar em identificadores de usuários fornecidos arbitrariamente pelo navegador.
-- Expor access tokens ou refresh tokens ao JavaScript do frontend.
+- Expor o token de sessão ou hashes de senha ao JavaScript do frontend.
 - Substituir a validação de autorização da Core API.
 
 ## 4. Estrutura arquitetural de referência
@@ -61,48 +62,101 @@ Esta estrutura é uma referência inicial, sujeita a refinamento durante a imple
 
 ## 5. Autenticação
 
-Identity Provider:
-
-- Keycloak.
+Login por e-mail e senha, decidido no [ADR 0003](../../docs/adr/0003-autenticacao-email-senha-postgresql.md).
+Não há Identity Provider externo.
 
 Fluxo:
 
-1. O navegador solicita autenticação ao BFF.
-2. O BFF inicia Authorization Code com PKCE.
-3. O usuário autentica no Keycloak.
-4. O BFF processa o callback OIDC.
-5. O BFF cria uma sessão no servidor.
-6. O navegador recebe um cookie de sessão seguro.
-7. O BFF utiliza credenciais de servidor para acessar a Core API.
+1. O frontend envia `POST /auth/login` com `{ "email", "password" }`.
+2. O BFF valida a senha (scrypt) de um usuário `ACTIVE` no schema `auth`.
+3. O BFF cria uma sessão no PostgreSQL e devolve um cookie de sessão seguro.
+4. O frontend consulta `GET /auth/me` para obter o usuário e o token CSRF.
 
-O navegador não deve armazenar tokens OIDC em localStorage ou sessionStorage.
+O navegador não armazena tokens em localStorage ou sessionStorage.
 
 ### Contrato web implementado
 
-- `GET /auth/login`: inicia o Authorization Code Flow com PKCE.
-- `GET /auth/callback`: valida a transação OIDC, cria a sessão e redireciona para
-  `/dashboard` na aplicação web.
-- `GET /auth/me`: retorna somente os dados públicos da sessão, incluindo o token CSRF que deve
-  permanecer apenas em memória no frontend.
-- `POST /auth/logout`: exige o header `X-CSRF-Token`, revoga a sessão no Redis e remove o cookie.
+- `POST /auth/register`: `{ "name", "phone", "email", "password" }`, com telefone somente em
+  dígitos. `201` com o cookie de sessão e o mesmo formato de `/auth/login`, com a mensagem
+  `"Usuário cadastrado com sucesso."`: a conta nasce `ACTIVE` e
+  o usuário já fica autenticado (sessão criada pelo mesmo serviço do login, revogando a anterior do
+  navegador, sem consumir tentativa de login); `409` para e-mail já
+  cadastrado (comparação sem diferenciar maiúsculas); `400` com `fields` listando somente os nomes
+  dos campos recusados. O cadastro também envia o link de verificação do e-mail (a conta nasce com
+  `emailVerified: false`); uma falha nesse envio não desfaz o cadastro. As regras de nome, telefone e força de senha ficam em
+  `src/auth/domain/policies` e espelham as validações do frontend.
+- `POST /auth/login`: `200` com o cookie de sessão e
+  `{ authenticated: true, message: "Usuário autenticado com sucesso.", csrfToken, user }`; `400` para
+  corpo inválido; `401` para credenciais inválidas, sem distinguir e-mail inexistente, senha
+  incorreta ou usuário suspenso. Revoga a sessão anterior do mesmo navegador.
+- `POST /auth/password-recovery`: `{ "email" }`; responde sempre `200` com a mensagem neutra
+  `{ "message": "Se existir uma conta para este e-mail, enviaremos as instruções." }`. Para uma
+  conta ativa, emite um token de uso único com validade de 15 minutos e solicita o envio pelo
+  provider configurado, sem revelar a existência da conta.
+- `POST /auth/password-reset`: `{ "token", "password" }`; valida o link e a política de senha,
+  redefine a senha, revoga todas as sessões e abre uma nova sessão no navegador que redefiniu (mesma
+  resposta do login, com a mensagem `Senha redefinida com sucesso.`). O token não pode ser reutilizado.
+- `POST /auth/email-verification`: `{ "token" }`; público (o link pode ser aberto em outro
+  aparelho). Consome o token de uso único (validade de 24 horas) e marca o e-mail como verificado;
+  `400` para link inválido, expirado ou já usado.
+- `POST /auth/email-verification/resend`: exige a sessão e o header `X-CSRF-Token`. Envia um novo
+  link para o e-mail da sessão e invalida os anteriores; `409` se o e-mail já foi verificado, `429`
+  durante o intervalo mínimo entre envios (60 segundos) e `503` se o provedor de e-mail falhar.
+- `GET /auth/me`: `{ authenticated, csrfToken, user: { subject, email, name, emailVerified } }`
+  (o mesmo `user` de login, cadastro e redefinição de senha). O token CSRF
+  deve permanecer apenas em memória no frontend. Renova a expiração por inatividade.
+- `POST /auth/logout`: exige o header `X-CSRF-Token`, revoga a sessão no banco e remove o cookie.
+  Responde `200` com `{ "authenticated": false, "message": "O logout foi efetuado com sucesso." }`.
 
-O BFF aceita requisições com credenciais somente da origem definida em `WEB_BASE_URL`. Access
-tokens, refresh tokens e ID tokens permanecem na sessão criptografada no servidor.
+O BFF aceita requisições com credenciais somente da origem definida em `WEB_BASE_URL`.
+
+### Usuários
+
+Além do cadastro público (`POST /auth/register`), usuários podem ser criados pelo CLI (a senha é
+solicitada sem eco no terminal):
+
+```bash
+pnpm --dir apps/bff user:create --email pessoa@exemplo.com --name "Nome da Pessoa"
+```
 
 ## 6. Sessões
 
-Requisitos:
+- Token opaco de 32 bytes em cookie assinado, HttpOnly, `SameSite=Lax`; `Secure` e prefixo
+  `__Host-` quando `BFF_BASE_URL` usa HTTPS.
+- O banco armazena somente o SHA-256 do token.
+- Expiração por inatividade de 30 minutos e absoluta de 12 horas.
+- Rotação da sessão a cada login e revogação no logout.
+- Sessões de usuários suspensos deixam de ser aceitas imediatamente.
+- Sessões vencidas são removidas a cada novo login.
 
-- Identificador de sessão opaco.
-- Cookie Secure e HttpOnly.
-- Política SameSite adequada.
-- Proteção contra CSRF.
-- Expiração absoluta e por inatividade, conforme política.
-- Rotação da sessão após autenticação.
-- Revogação de sessão.
-- Armazenamento centralizado quando houver múltiplas instâncias.
+### Banco de dados
 
-Nenhum estado crítico da sessão deve depender exclusivamente da memória de um Container.
+- Schema: `src/auth/infrastructure/database/auth.schema.ts`.
+- Migrations versionadas: `drizzle/`, geradas com `pnpm --dir apps/bff db:generate` e aplicadas
+  automaticamente quando o BFF inicia.
+- Desenvolvimento local: `docker compose up -d postgres` na raiz e `DATABASE_URL` em `.env.local`
+  (ver `.env.example`).
+
+### Envio de recuperação
+
+O [ADR 0004](../../docs/adr/0004-recuperacao-de-senha-com-resend.md) define o Resend. Em ambiente
+local, `EMAIL_PROVIDER=disabled` mantém o fluxo sem chamada externa. Para enviar de verdade:
+
+```text
+EMAIL_PROVIDER=resend
+RESEND_API_KEY=<secret>
+EMAIL_FROM=Comunidade Viva e Eficaz (HML) <seguranca@mail.comvivaeficaz.com.br>
+PASSWORD_RESET_TTL_MINUTES=15
+PASSWORD_RESET_COOLDOWN_SECONDS=60
+EMAIL_SEND_TIMEOUT_MS=5000
+```
+
+O modelo do e-mail fica em `src/auth/infrastructure/email/password-recovery-email.template.ts`,
+com HTML e texto puro, nas cores do frontend. A logo (`assets/email/logo-comunidade-viva.png`)
+segue como anexo inline (CID), sem depender de uma URL pública.
+
+Localmente, use a chave de HML (`comvivati-hml`) no `.env.local`, que não é versionado. Nos
+ambientes publicados, a chave fica somente nos secrets do Render.
 
 ## 7. Comunicação BFF → Core API
 
@@ -172,7 +226,7 @@ procedimento operacional está em `../../docs/deployment/README.md`.
 O BFF deve:
 
 - Ser stateless em relação ao processo.
-- Utilizar armazenamento externo para sessões.
+- Utilizar PostgreSQL para sessões.
 - Suportar múltiplas instâncias.
 - Implementar healthchecks e readiness.
 - Encerrar conexões de forma controlada.
@@ -188,13 +242,14 @@ O BFF deve:
 - Rastreamento de chamadas à Core API.
 - Monitoramento de falhas de autenticação.
 
-Nunca registrar tokens OIDC, segredos de sessão ou dados pessoais desnecessários.
+Nunca registrar senhas, tokens de sessão ou dados pessoais desnecessários.
 
 ## 13. Testes
 
 - Vitest.
 - Testes de sessão.
-- Testes de autenticação OIDC.
+- Testes de autenticação por e-mail e senha.
+- Testes de integração com PostgreSQL real (Testcontainers): `pnpm --dir apps/bff test:integration`.
 - Testes de CSRF.
 - Testes de integração com a Core API.
 - Testes de contratos.

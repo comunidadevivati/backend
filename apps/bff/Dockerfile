@@ -36,6 +36,8 @@ COPY apps/bff/package.json ./apps/bff/package.json
 RUN pnpm install --prod --frozen-lockfile --filter @comvivati/bff
 
 COPY --from=build --chown=node:node /workspace/apps/bff/dist ./apps/bff/dist
+COPY --chown=node:node apps/bff/drizzle ./apps/bff/drizzle
+COPY --chown=node:node apps/bff/assets ./apps/bff/assets
 
 USER node
 
