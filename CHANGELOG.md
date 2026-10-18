@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.5.0](https://github.com/comunidadevivati/backend/compare/backend-v0.4.1...backend-v0.5.0) (2026-10-18)
+
+
+### ✨ Funcionalidades
+
+* **auth:** ✨ promove login, recuperação e verificação de e-mail para produção ([bc2078c](https://github.com/comunidadevivati/backend/commit/bc2078c5bfb86538f4085e05bb9f61bb2f427637))
+
+
+### 📝 Documentação
+
+* **deploy:** 📝 documenta merge commit obrigatório na homologation ([c3341af](https://github.com/comunidadevivati/backend/commit/c3341afcf8f211a5807904134ba900e4132ec850))
+
+
+### 👷 Integração contínua
+
+* **release:** 👷 mescla o PR de release com merge commit ([#24](https://github.com/comunidadevivati/backend/issues/24)) ([2aff3e1](https://github.com/comunidadevivati/backend/commit/2aff3e1381f9da181b19f692ac6245542ada8639))
+
+
+### 🔧 Manutenção
+
+* **git:** 🔧 incorpora o histórico da main na homologation ([239649f](https://github.com/comunidadevivati/backend/commit/239649fad4e073030032ef1683eab16d32f1968e))
+* **git:** 🔧 incorpora o histórico da main na homologation ([d9f3897](https://github.com/comunidadevivati/backend/commit/d9f3897cd35224786bbd6eb0a544b802a86352f0))
+* **git:** 🔧 sincroniza main na homologation ([#23](https://github.com/comunidadevivati/backend/issues/23)) ([77f9a86](https://github.com/comunidadevivati/backend/commit/77f9a86a7f5c5eb81047698172ff972d3e338d0b))
+
 ## [0.4.1](https://github.com/comunidadevivati/backend/compare/backend-v0.4.0...backend-v0.4.1) (2026-10-18)
 
 
