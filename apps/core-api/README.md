@@ -33,6 +33,7 @@ src/
 │ │ ├── application/
 │ │ ├── infrastructure/
 │ │ └── presentation/
+│ │ └── public/ (contrato para outros contextos)
 │ ├── identity/
 │ ├── authorization/
 │ └── members/
@@ -237,6 +238,17 @@ Organização principal (Matriz) e congregações, descritas em
   ao iniciar; a migration `0001_matriz_e_sede` cria a Matriz e a Sede ativas.
 - Local: copie `.env.example` para `.env.local`, use o mesmo `CORE_API_TOKEN` no BFF e rode
   `pnpm dev:api`. Testes de integração com PostgreSQL real: `pnpm --dir apps/core-api test:integration`.
+
+## 16.1 Contexto Members implementado
+
+Membros e vínculos congregacionais, descritos em
+[docs/domains/members.md](../../docs/domains/members.md) e no
+[ADR 0007](../../docs/adr/0007-members-e-vinculos-congregacionais.md).
+
+- Rotas `/api/v1/members` e `/api/v1/memberships`, com a mesma credencial de serviço.
+- Schema `members` (migration `0002_membros`), com índices únicos parciais para o vínculo aberto
+  por congregação e o vínculo principal ativo.
+- Lê congregações somente pelo contrato público `organization/public` (`CongregationDirectory`).
 
 ## 17. Deploy de MVP e homologação
 

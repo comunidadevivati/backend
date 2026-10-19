@@ -129,6 +129,22 @@ indisponibilidade, `503`.
 | `PATCH /api/v1/congregations/:id`                          | Alteração parcial; exige `version`     |
 | `POST /api/v1/congregations/:id/activate` \| `/deactivate` | Ativa/reativa ou inativa               |
 
+### Membros e vínculos
+
+Mesmas regras de sessão, e-mail verificado, CSRF e repasse de erros das rotas de Organization
+([ADR 0007](../../docs/adr/0007-members-e-vinculos-congregacionais.md)).
+
+| Rota do BFF                                                          | Descrição                                |
+| -------------------------------------------------------------------- | ---------------------------------------- |
+| `GET /api/v1/members?status=&congregationId=&search=&cursor=&limit=` | Lista paginada `{ items, nextCursor }`   |
+| `GET /api/v1/members/:id`                                            | Consulta                                 |
+| `POST /api/v1/members`                                               | Registra (nasce `ACTIVE`)                |
+| `PATCH /api/v1/members/:id`                                          | Alteração parcial; exige `version`       |
+| `POST /api/v1/members/:id/activate`                                  | `/deactivate`                            | `/archive`                 | `/restore` | Muda a situação |
+| `GET /api/v1/members/:id/memberships`                                | Histórico de vínculos, com a congregação |
+| `POST /api/v1/members/:id/memberships`                               | Registra vínculo (nasce `PENDING`)       |
+| `POST /api/v1/memberships/:id/activate`                              | `/deactivate`                            | Ativa ou encerra o vínculo |
+
 Configuração: `CORE_API_URL` (origem da Core API, sem `/api/v1`), `CORE_API_TOKEN` (o mesmo da Core
 API) e `CORE_API_TIMEOUT_MS` (padrão 30000, folga para o cold start do Render).
 

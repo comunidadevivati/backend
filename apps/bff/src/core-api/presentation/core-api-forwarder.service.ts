@@ -11,7 +11,7 @@ import {
   CoreApiClient,
   CoreApiUnavailableError,
   type CoreApiRequest,
-} from '../../core-api/infrastructure/core-api.client.js';
+} from '../infrastructure/core-api.client.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 export interface ForwardOptions extends CoreApiRequest {
@@ -19,8 +19,8 @@ export interface ForwardOptions extends CoreApiRequest {
   write: boolean;
 }
 
-// Encaminha à Core API as rotas do frontend para Organization. Regra provisória do MVP: basta uma
-// sessão válida com e-mail verificado; papéis e permissões ainda não existem.
+// Encaminha à Core API as rotas de negócio do frontend (/api/v1/*). Regra provisória do MVP:
+// basta uma sessão válida com e-mail verificado; papéis e permissões ainda não existem.
 @Injectable()
 export class CoreApiForwarder {
   private readonly logger = new Logger(CoreApiForwarder.name);

@@ -4,7 +4,6 @@ import {
   Get,
   Header,
   Inject,
-  NotFoundException,
   Param,
   Patch,
   Post,
@@ -12,30 +11,14 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
-import { z } from 'zod';
-import { CoreApiForwarder } from './core-api-forwarder.service.js';
+import { CoreApiForwarder } from '../../core-api/presentation/core-api-forwarder.service.js';
+import { pickQuery, resourcePath } from '../../core-api/presentation/forwarding.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
-// Somente os filtros conhecidos seguem para a Core API.
 const LIST_QUERY_KEYS = ['status', 'cursor', 'limit'] as const;
 
-const pickListQuery = (query: unknown): Record<string, string> =>
-  Object.fromEntries(
-    LIST_QUERY_KEYS.flatMap((key) => {
-      const value = (query as Record<string, unknown> | undefined)?.[key];
-
-      return typeof value === 'string' ? [[key, value]] : [];
-    }),
-  );
-
-// O ID compõe o caminho na Core API: só UUIDs são aceitos, sem risco de path traversal.
-const congregationPath = (id: string, action?: 'activate' | 'deactivate'): string => {
-  if (!z.uuid().safeParse(id).success) {
-    throw new NotFoundException('Registro não encontrado.');
-  }
-
-  return action ? `congregations/${id}/${action}` : `congregations/${id}`;
-};
+const congregationPath = (id: string, action?: 'activate' | 'deactivate'): string =>
+  action ? resourcePath('congregations', id, action) : resourcePath('congregations', id);
 
 @Controller('api/v1/organization')
 export class OrganizationController {
@@ -102,7 +85,7 @@ export class CongregationsController {
       write: false,
       method: 'GET',
       path: 'congregations',
-      query: pickListQuery(query),
+      query: pickQuery(query, LIST_QUERY_KEYS),
     });
   }
 

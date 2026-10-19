@@ -104,7 +104,7 @@ Especificações dos Bounded Contexts:
 - Organization ([domains/organization.md](domains/organization.md); integração no ADR 0006).
 - Identity.
 - Authorization.
-- Members.
+- Members ([domains/members.md](domains/members.md); decisões no ADR 0007).
 
 Cada domínio deverá documentar:
 

@@ -1,6 +1,6 @@
 import { err, ok, type Result } from '../../../shared/domain/result.js';
+import { EmailAddress, PhoneNumber } from '../../../shared/domain/value-objects/contact.js';
 import { Cnpj } from '../domain/value-objects/cnpj.js';
-import { EmailAddress, PhoneNumber } from '../domain/value-objects/contact.js';
 import { InstitutionalName } from '../domain/value-objects/institutional.js';
 import { PostalAddress, type PostalAddressProps } from '../domain/value-objects/postal-address.js';
 import type { CongregationDetails } from '../domain/congregation.js';

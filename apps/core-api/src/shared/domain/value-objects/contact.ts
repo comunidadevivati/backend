@@ -1,6 +1,6 @@
-import { err, ok, type Result } from '../../../../shared/domain/result.js';
+import { err, ok, type Result } from '../result.js';
 
-// E-mail institucional, normalizado (trim + minúsculas).
+// E-mail normalizado (trim + minúsculas). Shared Kernel: usado por mais de um contexto.
 export class EmailAddress {
   private constructor(readonly value: string) {}
 

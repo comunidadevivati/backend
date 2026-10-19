@@ -5,7 +5,7 @@ import {
   type CoreApiClient,
   type CoreApiResponse,
 } from '../../core-api/infrastructure/core-api.client.js';
-import { CoreApiForwarder } from './core-api-forwarder.service.js';
+import { CoreApiForwarder } from '../../core-api/presentation/core-api-forwarder.service.js';
 import { CongregationsController, OrganizationController } from './organization.controllers.js';
 import type { SessionCookieService } from '../../auth/presentation/session-cookie.service.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';

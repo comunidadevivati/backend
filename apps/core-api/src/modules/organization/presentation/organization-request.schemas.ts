@@ -53,18 +53,3 @@ export const listCongregationsSchema = z.object({
 });
 
 export const congregationIdSchema = z.uuid();
-
-// Campos recusados pelo transporte, no mesmo formato de caminho usado pelo Domain.
-export const parseOrThrow = <T>(
-  schema: z.ZodType<T>,
-  input: unknown,
-  onError: (fields: string[]) => never,
-): T => {
-  const result = schema.safeParse(input ?? {});
-
-  if (!result.success) {
-    return onError([...new Set(result.error.issues.map(({ path }) => path.join('.') || 'body'))]);
-  }
-
-  return result.data;
-};
