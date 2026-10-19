@@ -141,6 +141,25 @@ solicitada sem eco no terminal):
 pnpm --dir apps/bff user:create --email pessoa@exemplo.com --name "Nome da Pessoa"
 ```
 
+Gestão de contas pela aplicação web (menu Usuários,
+[ADR 0008](../../docs/adr/0008-gestao-de-usuarios-no-bff.md)): exige sessão com **e-mail
+verificado** e `X-CSRF-Token` nas alterações. Conflitos (`409`) trazem `code` estável.
+
+| Rota do BFF                                                       | Descrição                                                                   |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `GET /api/v1/users?status=&emailVerified=&search=&cursor=&limit=` | Lista paginada `{ items, nextCursor }` (busca em nome e e-mail)             |
+| `GET /api/v1/users/:id`                                           | Consulta (sem hash de senha)                                                |
+| `POST /api/v1/users`                                              | Cadastro com o contrato do `/auth/register`, sem abrir sessão; envia o link |
+| `PATCH /api/v1/users/:id`                                         | Nome, telefone e e-mail; e-mail novo volta a "não verificado"               |
+| `POST /api/v1/users/:id/suspend` e `/reactivate`                  | Suspende (bloqueia login e encerra sessões) ou reativa                      |
+| `DELETE /api/v1/users/:id`                                        | Exclusão definitiva, somente de conta não verificada                        |
+
+Filtros da listagem: `status=ACTIVE|SUSPENDED` e `emailVerified=true|false`, combináveis. Cada
+conta traz `createdAt` e `suspendedAt` (ISO 8601 UTC; nulo quando ativa). Suspender de novo
+preserva o momento original e reativar o apaga.
+
+A própria conta não pode ser suspensa nem excluída (`code: self_action`).
+
 ## 6. Sessões
 
 - Token opaco de 32 bytes em cookie assinado, HttpOnly, `SameSite=Lax`; `Secure` e prefixo

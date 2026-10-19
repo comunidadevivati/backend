@@ -7,9 +7,10 @@ import { UserRepository } from './infrastructure/users/user.repository.js';
 import { PasswordRecoveryModule } from './password-recovery.module.js';
 import { AuthController } from './presentation/auth.controller.js';
 import { SessionCookieService } from './presentation/session-cookie.service.js';
+import { UserManagementModule } from './user-management.module.js';
 
 @Module({
-  imports: [PasswordRecoveryModule, EmailVerificationModule],
+  imports: [PasswordRecoveryModule, EmailVerificationModule, UserManagementModule],
   controllers: [AuthController],
   providers: [
     LoginUseCase,
