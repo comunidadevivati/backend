@@ -14,6 +14,12 @@ services:
         value: production
       - key: PORT
         value: '10000'
+      # Mesmo banco Neon do BFF do ambiente; a Core API usa o schema organization.
+      - key: DATABASE_URL
+        sync: false
+      # Credencial de serviço do BFF (ADR 0006), lida pelo BFF via fromService.
+      - key: CORE_API_TOKEN
+        generateValue: true
 
   - type: web
     name: comvivati-bff
@@ -50,6 +56,13 @@ services:
         value: '60'
       - key: EMAIL_SEND_TIMEOUT_MS
         value: '5000'
+      - key: CORE_API_URL
+        value: https://comvivati-core-api.onrender.com
+      - key: CORE_API_TOKEN
+        fromService:
+          type: web
+          name: comvivati-core-api
+          envVarKey: CORE_API_TOKEN
 
   # Homologação (HML): publicada a partir da branch homologation, com banco Neon próprio.
   - type: web
@@ -67,6 +80,12 @@ services:
         value: production
       - key: PORT
         value: '10000'
+      # Mesmo banco Neon do BFF do ambiente; a Core API usa o schema organization.
+      - key: DATABASE_URL
+        sync: false
+      # Credencial de serviço do BFF (ADR 0006), lida pelo BFF via fromService.
+      - key: CORE_API_TOKEN
+        generateValue: true
 
   - type: web
     name: comvivati-bff-hml
@@ -103,3 +122,10 @@ services:
         value: '60'
       - key: EMAIL_SEND_TIMEOUT_MS
         value: '5000'
+      - key: CORE_API_URL
+        value: https://comvivati-core-api-hml.onrender.com
+      - key: CORE_API_TOKEN
+        fromService:
+          type: web
+          name: comvivati-core-api-hml
+          envVarKey: CORE_API_TOKEN

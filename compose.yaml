@@ -35,6 +35,8 @@ services:
       BFF_BASE_URL: http://localhost:3000
       WEB_BASE_URL: http://localhost:5173
       DATABASE_URL: postgresql://comunidade_viva:${POSTGRES_PASSWORD:?Obrigatório}@postgres:5432/comunidade_viva
+      CORE_API_URL: http://core-api:10000
+      CORE_API_TOKEN: ${CORE_API_TOKEN:-}
     ports:
       - '127.0.0.1:3000:10000'
     depends_on:
@@ -50,8 +52,13 @@ services:
       dockerfile: apps/core-api/Dockerfile
     environment:
       PORT: '10000'
+      DATABASE_URL: postgresql://comunidade_viva:${POSTGRES_PASSWORD:?Obrigatório}@postgres:5432/comunidade_viva
+      CORE_API_TOKEN: ${CORE_API_TOKEN:-}
     ports:
       - '127.0.0.1:3001:10000'
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - backend
 

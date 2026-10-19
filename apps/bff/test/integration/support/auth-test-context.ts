@@ -136,6 +136,9 @@ beforeAll(async () => {
     EMAIL_VERIFICATION_TTL_HOURS: '24',
     EMAIL_VERIFICATION_COOLDOWN_SECONDS: '0',
     EMAIL_SEND_TIMEOUT_MS: '5000',
+    // A autenticação não chama a Core API; o endereço só precisa ser válido.
+    CORE_API_URL: 'http://localhost:3001',
+    CORE_API_TOKEN: randomBytes(32).toString('base64url'),
   });
 
   // O ConfigModule valida o ambiente ao carregar o módulo: importa somente após configurá-lo.

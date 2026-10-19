@@ -36,6 +36,7 @@ COPY apps/core-api/package.json ./apps/core-api/package.json
 RUN pnpm install --prod --frozen-lockfile --filter @comvivati/core-api
 
 COPY --from=build --chown=node:node /workspace/apps/core-api/dist ./apps/core-api/dist
+COPY --chown=node:node apps/core-api/drizzle ./apps/core-api/drizzle
 
 USER node
 

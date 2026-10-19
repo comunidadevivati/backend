@@ -101,7 +101,7 @@ temporária para a etapa gratuita está registrada em
 
 Especificações dos Bounded Contexts:
 
-- Organization.
+- Organization ([domains/organization.md](domains/organization.md); integração no ADR 0006).
 - Identity.
 - Authorization.
 - Members.

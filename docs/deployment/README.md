@@ -52,11 +52,16 @@ no [ADR 0004](../adr/0004-recuperacao-de-senha-com-resend.md).
 Navegador
     |
     v
-Frontend Cloudflare ── /auth/* ──> BFF Render ──> Neon PostgreSQL (schema auth)
-                                      |
-                                      v
-                                  Core API
+Frontend Cloudflare ── /auth/*, /api/* ──> BFF Render ──> Neon PostgreSQL (schema auth)
+                                               |
+                                               | Bearer CORE_API_TOKEN
+                                               v
+                                           Core API ──> Neon PostgreSQL (schema organization)
 ```
+
+BFF e Core API de um ambiente usam o mesmo projeto Neon, cada um com seus schemas. A Core API exige
+o `CORE_API_TOKEN` em todas as rotas, exceto o health check
+([ADR 0006](../adr/0006-organization-e-integracao-bff-core-api.md)).
 
 O frontend chama `/auth/*` na própria origem. Seu Worker encaminha essas rotas à origem pública do
 BFF definida no secret `BFF_ORIGIN`. Isso permite que o navegador receba o cookie HttpOnly na
@@ -64,15 +69,16 @@ origem do frontend, sem expor o token de sessão ao JavaScript.
 
 ## 3. Artefatos
 
-| Componente | Artefato                   |
-| ---------- | -------------------------- |
-| Blueprint  | `render.yaml`              |
-| BFF        | `apps/bff/Dockerfile`      |
-| Core API   | `apps/core-api/Dockerfile` |
-| Migrations | `apps/bff/drizzle`         |
+| Componente | Artefato                                                                             |
+| ---------- | ------------------------------------------------------------------------------------ |
+| Blueprint  | `render.yaml`                                                                        |
+| BFF        | `apps/bff/Dockerfile`                                                                |
+| Core API   | `apps/core-api/Dockerfile`                                                           |
+| Migrations | `apps/bff/drizzle` (schema `auth`) e `apps/core-api/drizzle` (schema `organization`) |
 
-Os containers escutam na porta `10000`. O BFF aplica as migrations pendentes do schema `auth` ao
-iniciar; se o banco estiver inacessível, o processo falha e o Render mantém a versão anterior.
+Os containers escutam na porta `10000`. BFF e Core API aplicam as próprias migrations pendentes ao
+iniciar; se o banco estiver inacessível, o processo falha e o Render mantém a versão anterior. A
+migration `0001_matriz_e_sede` da Core API cria a Matriz e a congregação Sede.
 
 ## 4. Preparar PostgreSQL no Neon
 
@@ -95,8 +101,13 @@ URL ou as credenciais ao Git.
 4. Mantenha o plano `free` dos serviços.
 5. Informe `DATABASE_URL` e `RESEND_API_KEY` de cada BFF (`comvivati-bff` e `comvivati-bff-hml`)
    quando solicitado (`sync: false`), usando o banco e a API key do respectivo ambiente.
+6. Informe também o `DATABASE_URL` de cada Core API (`comvivati-core-api` e
+   `comvivati-core-api-hml`), com a mesma connection string do BFF do ambiente.
 
-O `COOKIE_SECRET` é gerado pelo próprio Render, um por serviço. O Blueprint é lido da `main`; os
+O `COOKIE_SECRET` é gerado pelo próprio Render, um por serviço. O `CORE_API_TOKEN` é gerado no
+serviço da Core API e lido pelo BFF do mesmo ambiente (`fromService`); o BFF recebe a origem pública
+da Core API em `CORE_API_URL`. Em um Blueprint já existente, cadastre o `DATABASE_URL` da Core API
+no Dashboard antes do deploy: sem ele, a Core API falha ao iniciar. O Blueprint é lido da `main`; os
 serviços `*-hml` passam a existir quando o `render.yaml` com eles chegar à `main`, e a branch
 `homologation` precisa existir no GitHub.
 
