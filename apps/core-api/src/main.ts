@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module.js';
@@ -16,7 +17,7 @@ const bootstrap = async (): Promise<void> => {
 
   app.enableShutdownHooks();
 
-  const port = Number(process.env['PORT'] ?? 3001);
+  const port = app.get(ConfigService).getOrThrow<number>('PORT');
 
   await app.listen(port, '0.0.0.0');
 };

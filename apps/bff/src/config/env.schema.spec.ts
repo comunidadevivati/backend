@@ -9,6 +9,8 @@ const validEnv = {
   COOKIE_SECRET: 'a'.repeat(32),
   DATABASE_URL: 'postgresql://usuario:senha@localhost:5432/comunidade_viva',
   EMAIL_PROVIDER: 'disabled',
+  CORE_API_URL: 'http://localhost:3001',
+  CORE_API_TOKEN: 'b'.repeat(32),
 };
 
 const validateInvalidEnv = () =>
@@ -49,6 +51,14 @@ describe('validateEnv', () => {
       EMAIL_VERIFICATION_COOLDOWN_SECONDS: 60,
       EMAIL_SEND_TIMEOUT_MS: 5000,
     });
+  });
+
+  it('deve exigir a Core API com credencial de serviço e aplicar o timeout padrão', () => {
+    expect(validateEnv(validEnv)).toMatchObject({ CORE_API_TIMEOUT_MS: 30_000 });
+
+    expect(() =>
+      validateEnv({ ...validEnv, CORE_API_URL: 'ftp://core', CORE_API_TOKEN: 'curto' }),
+    ).toThrow('Invalid environment configuration: CORE_API_URL, CORE_API_TOKEN');
   });
 
   it('deve rejeitar URLs de banco que não sejam PostgreSQL', () => {

@@ -173,6 +173,8 @@ A direção arquitetural é sempre das camadas externas para as abstrações int
 ## 11. Segurança
 
 - Autenticação por e-mail e senha no BFF (ADR 0003); identidade propagada à Core API ainda pendente.
+- Credencial de serviço provisória do BFF (`CORE_API_TOKEN`, ADR 0006) em todas as rotas, exceto o
+  health check.
 - RBAC + ABAC + ReBAC para autorização.
 - Deny by default.
 - Explicit deny prevalece.
@@ -221,7 +223,22 @@ A extração para serviços independentes somente ocorrerá mediante justificati
 
 Toda decisão arquitetural relevante deverá ser registrada em docs/adr/.
 
-## 16. Deploy de MVP e homologação
+## 16. Contexto Organization implementado
+
+Organização principal (Matriz) e congregações, descritas em
+[docs/domains/organization.md](../../docs/domains/organization.md) e no
+[ADR 0006](../../docs/adr/0006-organization-e-integracao-bff-core-api.md).
+
+- Rotas `/api/v1/organization` e `/api/v1/congregations`, exigindo
+  `Authorization: Bearer <CORE_API_TOKEN>`; o health check permanece público.
+- Erros em RFC 9457 (`application/problem+json`), com `fields` listando somente os campos
+  recusados.
+- Schema `organization`, migrations em `drizzle/` (`pnpm --dir apps/core-api db:generate`) aplicadas
+  ao iniciar; a migration `0001_matriz_e_sede` cria a Matriz e a Sede ativas.
+- Local: copie `.env.example` para `.env.local`, use o mesmo `CORE_API_TOKEN` no BFF e rode
+  `pnpm dev:api`. Testes de integração com PostgreSQL real: `pnpm --dir apps/core-api test:integration`.
+
+## 17. Deploy de MVP e homologação
 
 A Core API possui empacotamento OCI em `Dockerfile` e é publicada como serviço web gratuito pelo
 Blueprint `../../render.yaml`. O Container usa a porta `10000` e expõe o health check

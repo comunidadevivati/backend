@@ -110,6 +110,28 @@ O navegador não armazena tokens em localStorage ou sessionStorage.
 
 O BFF aceita requisições com credenciais somente da origem definida em `WEB_BASE_URL`.
 
+### Organization e congregações
+
+Rotas encaminhadas à Core API ([ADR 0006](../../docs/adr/0006-organization-e-integracao-bff-core-api.md)).
+Todas exigem a sessão com **e-mail verificado** (`401` sem sessão, `403` sem verificação); as que
+alteram estado (`PATCH` e `POST`) exigem também `X-CSRF-Token`. Corpo e status da Core API são
+repassados (erros de negócio em `application/problem+json`); falhas da Core API viram `502`, e a
+indisponibilidade, `503`.
+
+| Rota do BFF                                                | Descrição                              |
+| ---------------------------------------------------------- | -------------------------------------- |
+| `GET /api/v1/organization`                                 | Organização principal (Matriz)         |
+| `PATCH /api/v1/organization`                               | Alteração parcial; exige `version`     |
+| `POST /api/v1/organization/activate` \| `/deactivate`      | Muda a situação                        |
+| `GET /api/v1/congregations?status=&cursor=&limit=`         | Lista paginada `{ items, nextCursor }` |
+| `GET /api/v1/congregations/:id`                            | Consulta                               |
+| `POST /api/v1/congregations`                               | Registra (nasce `DRAFT`)               |
+| `PATCH /api/v1/congregations/:id`                          | Alteração parcial; exige `version`     |
+| `POST /api/v1/congregations/:id/activate` \| `/deactivate` | Ativa/reativa ou inativa               |
+
+Configuração: `CORE_API_URL` (origem da Core API, sem `/api/v1`), `CORE_API_TOKEN` (o mesmo da Core
+API) e `CORE_API_TIMEOUT_MS` (padrão 30000, folga para o cold start do Render).
+
 ### Usuários
 
 Além do cadastro público (`POST /auth/register`), usuários podem ser criados pelo CLI (a senha é
@@ -170,6 +192,10 @@ Requisitos:
 - Retry somente em operações seguras ou idempotentes.
 - Validação de respostas externas.
 - Observabilidade distribuída.
+
+Provisoriamente ([ADR 0006](../../docs/adr/0006-organization-e-integracao-bff-core-api.md)), o
+BFF se autentica na Core API com `Authorization: Bearer <CORE_API_TOKEN>`, por REST/JSON e com
+timeout. A credencial identifica o BFF, não o usuário.
 
 A estratégia definitiva de propagação de identidade e Token Exchange permanece pendente de aprovação arquitetural.
 
