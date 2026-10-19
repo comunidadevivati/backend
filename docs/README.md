@@ -67,6 +67,7 @@ Documentação de segurança:
 - Login por e-mail e senha (ADR 0003).
 - Recuperação de senha com Resend (ADR 0004).
 - Verificação de e-mail do cadastro (ADR 0005).
+- Gestão de usuários pela aplicação web (ADR 0008).
 - Sessões seguras.
 - RBAC, ABAC e ReBAC.
 - Escopos organizacionais.

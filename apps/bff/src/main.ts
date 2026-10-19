@@ -19,7 +19,7 @@ const bootstrap = async (): Promise<void> => {
   app.enableCors({
     origin: new URL(config.getOrThrow<string>('WEB_BASE_URL')).origin,
     credentials: true,
-    methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Accept', 'Content-Type', 'X-CSRF-Token'],
   });
 
