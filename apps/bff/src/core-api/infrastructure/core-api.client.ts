@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 export interface CoreApiRequest {
-  method: 'GET' | 'POST' | 'PATCH';
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   // Caminho relativo a /api/v1 da Core API, ex.: congregations/<id>/activate.
   path: string;
   query?: Record<string, string>;

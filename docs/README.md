@@ -69,6 +69,8 @@ Documentação de segurança:
 - Verificação de e-mail do cadastro (ADR 0005).
 - Gestão de usuários pela aplicação web (ADR 0008).
 - Pessoa e membro a partir de conta verificada; o membro referencia a Pessoa (ADR 0009).
+- Galeria de fotos com Cloudflare R2: bucket único com áreas privada e pública e publicação
+  controlada (ADR 0010).
 - Sessões seguras.
 - RBAC, ABAC e ReBAC.
 - Escopos organizacionais.
@@ -89,7 +91,7 @@ Documentação operacional:
 - Cloudflare Workers Static Assets.
 - Cloudflare R2.
 - GitHub Actions.
-- Render Blueprint conectado ao GitHub.
+- Render Blueprint por ambiente, conectado ao GitHub (ADR 0011).
 - PostgreSQL gerenciado.
 - Workers contínuos.
 - Backups e Disaster Recovery.
@@ -107,6 +109,7 @@ Especificações dos Bounded Contexts:
 - Identity.
 - Authorization.
 - Members ([domains/members.md](domains/members.md); decisões no ADR 0007).
+- Gallery ([domains/gallery.md](domains/gallery.md); decisões no ADR 0010).
 
 Cada domínio deverá documentar:
 

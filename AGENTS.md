@@ -466,7 +466,9 @@ Free-tier topology for MVP and homologation.
 
 - GitHub Actions for CI/CD.
 
-- Render Blueprint connected to the backend `main` branch after CI checks pass.
+- One Render Blueprint per environment (ADR 0011): `render.yaml` on `main` (production) and
+  `render.homologation.yaml` on `homologation` (HML), deploying after CI checks pass. Change both
+  files together.
 
 Do not claim the free topology is production-ready; it accepts cold starts, quotas and no SLA.
 

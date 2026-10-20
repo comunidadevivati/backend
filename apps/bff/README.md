@@ -148,6 +148,23 @@ edição direta de membro: a conta verificada vira Pessoa e membro por `POST /ap
 Configuração: `CORE_API_URL` (origem da Core API, sem `/api/v1`), `CORE_API_TOKEN` (o mesmo da Core
 API) e `CORE_API_TIMEOUT_MS` (padrão 30000, folga para o cold start do Render).
 
+### Galeria de fotos
+
+Mesmas regras de sessão, e-mail verificado, CSRF e repasse de erros
+([ADR 0010](../../docs/adr/0010-galeria-de-fotos-r2.md)). As fotos não passam pelo BFF: o
+navegador envia direto ao bucket de mídia pela URL devolvida em `/uploads`.
+
+| Rota do BFF                                         | Descrição                                            |
+| --------------------------------------------------- | ---------------------------------------------------- |
+| `GET /api/v1/gallery/albums?status=&cursor=&limit=` | Lista paginada, mais recentes primeiro               |
+| `POST /api/v1/gallery/albums`                       | Cria (nasce `DRAFT`, slug derivado da data e título) |
+| `GET /api/v1/gallery/albums/:id`                    | Consulta, com a quantidade de fotos prontas          |
+| `PATCH /api/v1/gallery/albums/:id`                  | Alteração parcial; exige `version`                   |
+| `GET /api/v1/gallery/albums/:id/photos`             | Fotos enviadas, com miniatura de validade curta      |
+| `POST /api/v1/gallery/albums/:id/uploads`           | URLs de envio direto (`{ files }`, até 50)           |
+| `POST /api/v1/gallery/photos/:id/complete`          | Confirma o envio (`202`; processamento assíncrono)   |
+| `DELETE /api/v1/gallery/photos/:id`                 | Exclusão definitiva (objetos privados e metadados)   |
+
 ### Usuários
 
 Além do cadastro público (`POST /auth/register`), usuários podem ser criados pelo CLI (a senha é
@@ -286,10 +303,11 @@ A escolha do protocolo principal REST/GraphQL/gRPC continua pendente.
 
 Hospedagem de MVP e homologação:
 
-- Render Free, por meio do Blueprint `../../render.yaml`.
+- Render Free, por meio dos Blueprints `../../render.yaml` (produção) e
+  `../../render.homologation.yaml` (HML).
 
 O processo Node escuta em todas as interfaces dentro do Container. Os segredos são cadastrados no
-Dashboard do Render durante a criação do Blueprint e não pertencem ao repositório. O frontend
+Dashboard do Render durante a criação dos Blueprints e não pertencem ao repositório. O frontend
 permanece na Cloudflare e encaminha `/auth/*` ao BFF, preservando a sessão na mesma origem. O
 procedimento operacional está em `../../docs/deployment/README.md`.
 

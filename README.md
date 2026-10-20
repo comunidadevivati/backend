@@ -4,7 +4,8 @@ Projeto Backend da Comunidade Viva - API + BFF
 
 ## Deploy gratuito de MVP e homologação
 
-O backend possui um Blueprint do Render para publicar Core API e BFF em serviços web gratuitos.
+O backend possui um Blueprint do Render por ambiente (`render.yaml` para produção e
+`render.homologation.yaml` para homologação) para publicar Core API e BFF em serviços web gratuitos.
 PostgreSQL é provisionado no Neon Free e guarda usuários e sessões do login por e-mail e senha
 ([ADR 0003](docs/adr/0003-autenticacao-email-senha-postgresql.md)). A recuperação usa o Resend
 ([ADR 0004](docs/adr/0004-recuperacao-de-senha-com-resend.md)). O frontend permanece na Cloudflare e
