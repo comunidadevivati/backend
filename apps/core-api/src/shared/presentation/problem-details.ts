@@ -25,6 +25,7 @@ const TITLES: Record<number, string> = {
   404: 'Recurso não encontrado',
   409: 'Conflito',
   500: 'Erro interno',
+  503: 'Serviço indisponível',
 };
 
 export class ProblemException extends HttpException {

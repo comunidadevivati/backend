@@ -254,10 +254,29 @@ Pessoas, membros e vínculos congregacionais, descritos em
   e membro na mesma transação, de forma idempotente por conta.
 - Lê congregações somente pelo contrato público `organization/public` (`CongregationDirectory`).
 
+## 16.2 Contexto Gallery implementado (etapa A)
+
+Álbuns e envio de fotos, descritos em [docs/domains/gallery.md](../../docs/domains/gallery.md) e
+no [ADR 0010](../../docs/adr/0010-galeria-de-fotos-r2.md). Publicação, CDN e site público vêm na
+etapa B.
+
+- Rotas `/api/v1/gallery/albums` e `/api/v1/gallery/photos`, com a mesma credencial de serviço.
+- Schema `gallery` (migration `0003_galeria`).
+- O navegador envia direto ao bucket de mídia (URL pré-assinada com o `Content-Type` assinado); a
+  confirmação coloca a foto numa fila em processo (`sharp`, uma foto por vez), retomada ao iniciar.
+- Configuração: `MEDIA_STORAGE` (`disabled` ou `s3`), `MEDIA_S3_ENDPOINT`, `MEDIA_S3_REGION`,
+  `MEDIA_S3_ACCESS_KEY_ID`, `MEDIA_S3_SECRET_ACCESS_KEY`, `MEDIA_BUCKET` (bucket único,
+  compartilhado pelos ambientes) e `MEDIA_KEY_PREFIX` (pasta do ambiente: `prod`, `hml`, `dev`).
+  Com `disabled`, os envios respondem `503`.
+- Desenvolvimento local: `docker compose up -d media` sobe um emulador S3 (`versitygw`) em
+  `http://localhost:9000`, com o bucket já criado; os valores estão no `.env.example`. Os testes
+  de integração sobem o mesmo emulador em container.
+
 ## 17. Deploy de MVP e homologação
 
 A Core API possui empacotamento OCI em `Dockerfile` e é publicada como serviço web gratuito pelo
-Blueprint `../../render.yaml`. O Container usa a porta `10000` e expõe o health check
+Blueprint do ambiente (`../../render.yaml` em produção e `../../render.homologation.yaml` em HML).
+O Container usa a porta `10000` e expõe o health check
 `/api/v1/health`.
 
 O plano gratuito aceita cold starts e não possui SLA de produção. O procedimento operacional está

@@ -12,7 +12,15 @@ let container: StartedPostgreSqlContainer;
 
 export let app: NestFastifyApplication;
 
-type Method = 'GET' | 'POST' | 'PATCH';
+// Preparações que precisam rodar antes de a Core API carregar (ex.: emulador S3 da galeria, que
+// define variáveis de ambiente). Registradas ao importar o módulo, independem da ordem dos imports.
+const beforeAppStart: (() => Promise<void>)[] = [];
+
+export const registerBeforeAppStart = (setup: () => Promise<void>) => {
+  beforeAppStart.push(setup);
+};
+
+type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 
 export const call = (method: Method, url: string, payload?: object, token = CORE_API_TOKEN) =>
   app.inject({
@@ -30,6 +38,11 @@ beforeAll(async () => {
     DATABASE_URL: container.getConnectionUri(),
     CORE_API_TOKEN,
   });
+
+  for (const setup of beforeAppStart) {
+    // oxlint-disable-next-line no-await-in-loop -- preparações em ordem de registro
+    await setup();
+  }
 
   // O ConfigModule valida o ambiente ao carregar o módulo: importa somente após configurá-lo.
   const { AppModule } = await import('../../../src/app.module.js');

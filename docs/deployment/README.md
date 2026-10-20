@@ -8,8 +8,8 @@ Esta topologia mantém custo mensal zero enquanto o uso permanecer dentro das co
 - Core API e BFF: serviços web gratuitos no Render;
 - PostgreSQL (usuários e sessões do BFF): Neon Free;
 - CI: GitHub Actions;
-- deploy: Render Blueprint; `homologation` publica HML e `main` publica produção, após os checks
-  do CI.
+- deploy: um Render Blueprint por ambiente ([ADR 0011](../adr/0011-blueprint-por-ambiente-no-render.md));
+  `homologation` publica HML e `main` publica produção, após os checks do CI.
 
 ### Ambientes
 
@@ -71,7 +71,7 @@ origem do frontend, sem expor o token de sessão ao JavaScript.
 
 | Componente | Artefato                                                                             |
 | ---------- | ------------------------------------------------------------------------------------ |
-| Blueprint  | `render.yaml`                                                                        |
+| Blueprints | `render.yaml` (produção, `main`) e `render.homologation.yaml` (HML, `homologation`)  |
 | BFF        | `apps/bff/Dockerfile`                                                                |
 | Core API   | `apps/core-api/Dockerfile`                                                           |
 | Migrations | `apps/bff/drizzle` (schema `auth`) e `apps/core-api/drizzle` (schema `organization`) |
@@ -93,23 +93,49 @@ postgresql://USUARIO:SENHA@HOST/DATABASE?sslmode=require
 Esse valor será o secret `DATABASE_URL` do BFF do respectivo ambiente no Render. Nunca adicione a
 URL ou as credenciais ao Git.
 
-## 5. Criar o Blueprint no Render
+## 5. Criar os Blueprints no Render
+
+Cada ambiente tem o próprio Blueprint ([ADR 0011](../adr/0011-blueprint-por-ambiente-no-render.md)):
+
+| Blueprint               | Branch         | Arquivo                    | Serviços                                      |
+| ----------------------- | -------------- | -------------------------- | --------------------------------------------- |
+| `comvivati-backend`     | `main`         | `render.yaml`              | `comvivati-core-api`, `comvivati-bff`         |
+| `comvivati-backend-hml` | `homologation` | `render.homologation.yaml` | `comvivati-core-api-hml`, `comvivati-bff-hml` |
+
+Para cada um:
 
 1. No Render, escolha **New > Blueprint**.
 2. Conecte `https://github.com/comunidadevivati/backend`.
-3. Selecione a branch `main` e o arquivo `render.yaml`.
+3. Selecione a branch e o arquivo da tabela (em **Blueprint Path**).
 4. Mantenha o plano `free` dos serviços.
-5. Informe `DATABASE_URL` e `RESEND_API_KEY` de cada BFF (`comvivati-bff` e `comvivati-bff-hml`)
-   quando solicitado (`sync: false`), usando o banco e a API key do respectivo ambiente.
-6. Informe também o `DATABASE_URL` de cada Core API (`comvivati-core-api` e
-   `comvivati-core-api-hml`), com a mesma connection string do BFF do ambiente.
+5. Informe `DATABASE_URL` e `RESEND_API_KEY` do BFF quando solicitado (`sync: false`), usando o
+   banco e a API key do ambiente.
+6. Informe também o `DATABASE_URL` da Core API, com a mesma connection string do BFF do ambiente, e
+   as credenciais do R2 (seção 9.1).
 
 O `COOKIE_SECRET` é gerado pelo próprio Render, um por serviço. O `CORE_API_TOKEN` é gerado no
-serviço da Core API e lido pelo BFF do mesmo ambiente (`fromService`); o BFF recebe a origem pública
-da Core API em `CORE_API_URL`. Em um Blueprint já existente, cadastre o `DATABASE_URL` da Core API
-no Dashboard antes do deploy: sem ele, a Core API falha ao iniciar. O Blueprint é lido da `main`; os
-serviços `*-hml` passam a existir quando o `render.yaml` com eles chegar à `main`, e a branch
-`homologation` precisa existir no GitHub.
+serviço da Core API e lido pelo BFF do mesmo ambiente (`fromService`, por isso os dois serviços de
+um ambiente ficam no mesmo Blueprint); o BFF recebe a origem pública da Core API em `CORE_API_URL`.
+Mudanças de configuração devem ser feitas nos dois arquivos na mesma branch de feature: a HML as
+recebe ao entrar em `homologation`, e a produção ao ser promovida para `main`.
+
+### Migração do Blueprint único (uma vez)
+
+Até o ADR 0011, o Blueprint `comvivati-backend` (na `main`) gerenciava os quatro serviços. Um
+serviço só pode pertencer a um Blueprint, então a ordem importa:
+
+1. Antes do merge, garanta que as variáveis `sync: false` dos serviços `*-hml` estejam preenchidas
+   no Dashboard (elas continuam no serviço).
+2. Faça o merge em `homologation` e depois promova para `main`. Ao sincronizar o `render.yaml` só
+   com a produção, os serviços `*-hml` deixam de ser gerenciados pelo Blueprint `comvivati-backend`.
+   Se o Render pedir confirmação para **excluir** os serviços removidos do arquivo, não confirme: eles
+   devem ser apenas desvinculados.
+3. Crie o Blueprint `comvivati-backend-hml` (branch `homologation`, arquivo
+   `render.homologation.yaml`). Na revisão antes de aplicar, confira se o Render vai reaproveitar os
+   serviços `comvivati-core-api-hml` e `comvivati-bff-hml` existentes. Se ele for criar serviços
+   novos com os mesmos nomes, cancele e exclua os antigos primeiro; nesse caso, informe outra vez os
+   valores `sync: false` (o `CORE_API_TOKEN` da HML é gerado de novo).
+4. Confirme o health check dos serviços de HML (seção 9).
 
 Se o Blueprint já existia com o serviço `comvivati-keycloak`, exclua esse serviço manualmente no
 Dashboard após a sincronização e remova as variáveis antigas do BFF (`KEYCLOAK_*`,
@@ -168,11 +194,12 @@ migrations, use o PostgreSQL do `compose.yaml`.
 
 ## 8. Deploy automático
 
-Cada serviço do Blueprint usa `autoDeployTrigger: checksPass`, com `branch: main` em produção e
+Cada serviço usa `autoDeployTrigger: checksPass`, com `branch: main` em produção e
 `branch: homologation` em HML.
 
 Após um merge em uma dessas branches, o Render aguarda os checks do GitHub e publica os serviços do
-respectivo ambiente. O Blueprint também é sincronizado quando `render.yaml` muda na `main`.
+respectivo ambiente. Cada Blueprint também é sincronizado quando o seu arquivo muda na sua branch
+(`render.yaml` na `main`, `render.homologation.yaml` na `homologation`).
 
 ## 9. Validação
 
@@ -195,6 +222,31 @@ Depois valide o fluxo real:
 
 Não considere a integração comprovada apenas com health checks ou testes unitários.
 
+## 9.1 Armazenamento de fotos no Cloudflare R2 (galeria, ADR 0010)
+
+Sem estas etapas a galeria fica desligada (`MEDIA_STORAGE=disabled`, envios respondem `503`).
+HML e produção usam **um único bucket**, cada um na sua pasta (`hml/` e `prod/`), porque a cota
+gratuita de 10 GB é da conta. No painel do Cloudflare:
+
+1. Criar o bucket `comunidade-viva-media`, **sem** domínio público nem acesso `r2.dev` por
+   enquanto. Buckets criados para o modelo anterior (`-private`/`-public`) podem ser apagados se
+   estiverem vazios.
+2. Em CORS do bucket, liberar `PUT` e `GET` com o cabeçalho `Content-Type` somente para as
+   origens do frontend (`https://comvivaeficaz.com.br` e `https://hml.comvivaeficaz.com.br`).
+3. Em ciclo de vida (Object lifecycle rules), apagar após 1 dia os objetos dos prefixos
+   `prod/gallery/uploads/` e `hml/gallery/uploads/` (envios abandonados), uma regra por prefixo.
+4. Criar um token de API do R2 com permissão de leitura e escrita somente nesse bucket (o R2 não
+   restringe por pasta; ver as consequências no ADR 0010).
+5. Os Blueprints (`render.yaml` e `render.homologation.yaml`) já definem `MEDIA_STORAGE=s3`, `MEDIA_S3_REGION=auto`,
+   `MEDIA_BUCKET=comunidade-viva-media` e `MEDIA_KEY_PREFIX` (`prod` ou `hml`). No serviço da Core API
+   de cada ambiente, preencher no painel `MEDIA_S3_ENDPOINT=https://<id-da-conta>.r2.cloudflarestorage.com`
+   (sem o nome do bucket), `MEDIA_S3_ACCESS_KEY_ID` e `MEDIA_S3_SECRET_ACCESS_KEY` **antes** do deploy:
+   sem eles a Core API recusa iniciar.
+
+Os domínios públicos (`media.comvivaeficaz.com.br` e `media-hml.comvivaeficaz.com.br`, ligados ao
+mesmo bucket), a regra do WAF que restringe cada um a `/{pasta}/gallery/public/` e o token de purge
+da CDN entram com a etapa de publicação.
+
 ## 10. Limites conhecidos
 
 - Serviços Render Free dormem após inatividade e podem demorar para responder no primeiro acesso.
@@ -205,3 +257,6 @@ Não considere a integração comprovada apenas com health checks ou testes unit
   cooldown por conta, mas o limite adicional por IP/origem e a confirmação de e-mail ainda precisam
   ser tratados antes de produção.
 - Alterações no nome público de qualquer serviço exigem atualizar URLs do BFF e do frontend.
+- O processamento de fotos roda na própria Core API, uma foto por vez; no Render Free cada foto pode
+  levar de 15 a 20 segundos, e a cota gratuita do R2 (10 GB) comporta da ordem de 3.000 a 5.000
+  fotos.
