@@ -110,6 +110,61 @@ O navegador não armazena tokens em localStorage ou sessionStorage.
 
 O BFF aceita requisições com credenciais somente da origem definida em `WEB_BASE_URL`.
 
+### Organization e congregações
+
+Rotas encaminhadas à Core API ([ADR 0006](../../docs/adr/0006-organization-e-integracao-bff-core-api.md)).
+Todas exigem a sessão com **e-mail verificado** (`401` sem sessão, `403` sem verificação); as que
+alteram estado (`PATCH` e `POST`) exigem também `X-CSRF-Token`. Corpo e status da Core API são
+repassados (erros de negócio em `application/problem+json`); falhas da Core API viram `502`, e a
+indisponibilidade, `503`.
+
+| Rota do BFF                                                | Descrição                              |
+| ---------------------------------------------------------- | -------------------------------------- |
+| `GET /api/v1/organization`                                 | Organização principal (Matriz)         |
+| `PATCH /api/v1/organization`                               | Alteração parcial; exige `version`     |
+| `POST /api/v1/organization/activate` \| `/deactivate`      | Muda a situação                        |
+| `GET /api/v1/congregations?status=&cursor=&limit=`         | Lista paginada `{ items, nextCursor }` |
+| `GET /api/v1/congregations/:id`                            | Consulta                               |
+| `POST /api/v1/congregations`                               | Registra (nasce `DRAFT`)               |
+| `PATCH /api/v1/congregations/:id`                          | Alteração parcial; exige `version`     |
+| `POST /api/v1/congregations/:id/activate` \| `/deactivate` | Ativa/reativa ou inativa               |
+
+### Membros e vínculos
+
+Mesmas regras de sessão, e-mail verificado, CSRF e repasse de erros das rotas de Organization
+([ADR 0007](../../docs/adr/0007-members-e-vinculos-congregacionais.md)). Não há cadastro nem
+edição direta de membro: a conta verificada vira Pessoa e membro por `POST /api/v1/users/members`
+([ADR 0009](../../docs/adr/0009-pessoa-e-membro-a-partir-de-conta.md)), e os membros vêm com os dados da Pessoa (`person`).
+
+| Rota do BFF                                                          | Descrição                                |
+| -------------------------------------------------------------------- | ---------------------------------------- |
+| `GET /api/v1/members?status=&congregationId=&search=&cursor=&limit=` | Lista paginada `{ items, nextCursor }`   |
+| `GET /api/v1/members/:id`                                            | Consulta                                 |
+| `POST /api/v1/members/:id/activate`                                  | `/deactivate`                            | `/archive`                 | `/restore` | Muda a situação |
+| `GET /api/v1/members/:id/memberships`                                | Histórico de vínculos, com a congregação |
+| `POST /api/v1/members/:id/memberships`                               | Registra vínculo (nasce `PENDING`)       |
+| `POST /api/v1/memberships/:id/activate`                              | `/deactivate`                            | Ativa ou encerra o vínculo |
+
+Configuração: `CORE_API_URL` (origem da Core API, sem `/api/v1`), `CORE_API_TOKEN` (o mesmo da Core
+API) e `CORE_API_TIMEOUT_MS` (padrão 30000, folga para o cold start do Render).
+
+### Galeria de fotos
+
+Mesmas regras de sessão, e-mail verificado, CSRF e repasse de erros
+([ADR 0010](../../docs/adr/0010-galeria-de-fotos-r2.md)). As fotos não passam pelo BFF: o
+navegador envia direto ao bucket de mídia pela URL devolvida em `/uploads`.
+
+| Rota do BFF                                         | Descrição                                            |
+| --------------------------------------------------- | ---------------------------------------------------- |
+| `GET /api/v1/gallery/albums?status=&cursor=&limit=` | Lista paginada, mais recentes primeiro               |
+| `POST /api/v1/gallery/albums`                       | Cria (nasce `DRAFT`, slug derivado da data e título) |
+| `GET /api/v1/gallery/albums/:id`                    | Consulta, com a quantidade de fotos prontas          |
+| `PATCH /api/v1/gallery/albums/:id`                  | Alteração parcial; exige `version`                   |
+| `GET /api/v1/gallery/albums/:id/photos`             | Fotos enviadas, com miniatura de validade curta      |
+| `POST /api/v1/gallery/albums/:id/uploads`           | URLs de envio direto (`{ files }`, até 50)           |
+| `POST /api/v1/gallery/photos/:id/complete`          | Confirma o envio (`202`; processamento assíncrono)   |
+| `DELETE /api/v1/gallery/photos/:id`                 | Exclusão definitiva (objetos privados e metadados)   |
+
 ### Usuários
 
 Além do cadastro público (`POST /auth/register`), usuários podem ser criados pelo CLI (a senha é
@@ -118,6 +173,34 @@ solicitada sem eco no terminal):
 ```bash
 pnpm --dir apps/bff user:create --email pessoa@exemplo.com --name "Nome da Pessoa"
 ```
+
+Gestão de contas pela aplicação web (menu Usuários,
+[ADR 0008](../../docs/adr/0008-gestao-de-usuarios-no-bff.md)): exige sessão com **e-mail
+verificado** e `X-CSRF-Token` nas alterações. Conflitos (`409`) trazem `code` estável.
+
+| Rota do BFF                                                       | Descrição                                                                   |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `GET /api/v1/users?status=&emailVerified=&search=&cursor=&limit=` | Lista paginada `{ items, nextCursor }` (busca em nome e e-mail)             |
+| `GET /api/v1/users/:id`                                           | Consulta (sem hash de senha)                                                |
+| `POST /api/v1/users`                                              | Cadastro com o contrato do `/auth/register`, sem abrir sessão; envia o link |
+| `PATCH /api/v1/users/:id`                                         | Nome, telefone e e-mail; e-mail novo volta a "não verificado"               |
+| `POST /api/v1/users/:id/suspend` e `/reactivate`                  | Suspende (bloqueia login e encerra sessões) ou reativa                      |
+| `DELETE /api/v1/users/:id`                                        | Exclusão definitiva, somente de conta não verificada                        |
+| `POST /api/v1/users/members`                                      | Converte contas verificadas em Pessoa e membro (`{ userIds }`, 1 a 50)      |
+
+Filtros da listagem: `status=ACTIVE|SUSPENDED`, `emailVerified=true|false` e `hasPerson=true|false`,
+combináveis. Cada conta traz `createdAt`, `suspendedAt` (ISO 8601 UTC; nulo quando ativa) e
+`personId` (Pessoa gerada a partir dela ao virar membro; nula enquanto não houver). Suspender de novo
+preserva o momento original e reativar o apaga.
+
+A própria conta não pode ser suspensa nem excluída (`code: self_action`).
+
+A conversão ([ADR 0009](../../docs/adr/0009-pessoa-e-membro-a-partir-de-conta.md)) exige conta com e-mail
+verificado: a Core API cria a Pessoa (com nome, e-mail e telefone da conta) e o membro na mesma
+transação, e o BFF grava `auth.users.person_id`, com a conta bloqueada durante a conversão (uma
+conta gera no máximo uma Pessoa e um membro; repetir é seguro). Responde `200` com o
+resultado de cada conta: `linked`, `already_linked`, `not_found`, `unverified`, `rejected` ou
+`unavailable`.
 
 ## 6. Sessões
 
@@ -171,6 +254,10 @@ Requisitos:
 - Validação de respostas externas.
 - Observabilidade distribuída.
 
+Provisoriamente ([ADR 0006](../../docs/adr/0006-organization-e-integracao-bff-core-api.md)), o
+BFF se autentica na Core API com `Authorization: Bearer <CORE_API_TOKEN>`, por REST/JSON e com
+timeout. A credencial identifica o BFF, não o usuário.
+
 A estratégia definitiva de propagação de identidade e Token Exchange permanece pendente de aprovação arquitetural.
 
 Não encaminhar headers de identidade fornecidos pelo navegador como fonte confiável.
@@ -216,10 +303,11 @@ A escolha do protocolo principal REST/GraphQL/gRPC continua pendente.
 
 Hospedagem de MVP e homologação:
 
-- Render Free, por meio do Blueprint `../../render.yaml`.
+- Render Free, por meio dos Blueprints `../../render.yaml` (produção) e
+  `../../render.homologation.yaml` (HML).
 
 O processo Node escuta em todas as interfaces dentro do Container. Os segredos são cadastrados no
-Dashboard do Render durante a criação do Blueprint e não pertencem ao repositório. O frontend
+Dashboard do Render durante a criação dos Blueprints e não pertencem ao repositório. O frontend
 permanece na Cloudflare e encaminha `/auth/*` ao BFF, preservando a sessão na mesma origem. O
 procedimento operacional está em `../../docs/deployment/README.md`.
 

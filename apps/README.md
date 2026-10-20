@@ -116,7 +116,8 @@ worker:
 CI/CD:
 
 - GitHub Actions.
-- Render Blueprint conectado à branch `main` após os checks do CI.
+- Um Render Blueprint por ambiente (ADR 0011): `render.yaml` na `main` e
+  `render.homologation.yaml` na `homologation`, publicando após os checks do CI.
 - Imagens construídas diretamente dos Dockerfiles do monorepo.
 - Publicações independentes por aplicação.
 

@@ -12,6 +12,7 @@
     "coverage",
     "src/**/*.spec.ts",
     "src/**/*.test.ts",
+    "src/**/*.fixtures.ts",
     "src/**/*.integration-spec.ts",
     "src/**/*.e2e-spec.ts"
   ]

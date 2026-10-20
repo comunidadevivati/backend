@@ -466,7 +466,9 @@ Free-tier topology for MVP and homologation.
 
 - GitHub Actions for CI/CD.
 
-- Render Blueprint connected to the backend `main` branch after CI checks pass.
+- One Render Blueprint per environment (ADR 0011): `render.yaml` on `main` (production) and
+  `render.homologation.yaml` on `homologation` (HML), deploying after CI checks pass. Change both
+  files together.
 
 Do not claim the free topology is production-ready; it accepts cold starts, quotas and no SLA.
 
@@ -548,9 +550,12 @@ Authorization:
 
 Members:
 
-- Member and Membership are separate Aggregates.
+- Person, Member and Membership are separate Aggregates (ADR 0009).
 
-- PersonProfile belongs inside Member.
+- Person is the full personal record; Member holds no personal data and references the Person.
+
+- Chain: registered account → verified account → Person → Member. A Person is only created
+  from a verified account, and only a Person can become a Member.
 
 - Member states: ACTIVE, INACTIVE, ARCHIVED.
 

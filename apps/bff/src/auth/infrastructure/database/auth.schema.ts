@@ -15,6 +15,11 @@ export const users = authSchema.table('users', {
   status: userStatus('status').notNull().default('ACTIVE'),
   // Preenchido quando a pessoa confirma o e-mail pelo link enviado; nulo = e-mail não verificado.
   emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
+  // Momento da suspensão; nulo enquanto a conta está ativa.
+  suspendedAt: timestamp('suspended_at', { withTimezone: true }),
+  // Pessoa (cadastro completo, na Core API) gerada a partir desta conta verificada, ao virar membro;
+  // nula enquanto não houver. Identity é dono do vínculo; sem chave estrangeira entre schemas.
+  personId: uuid('person_id').unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

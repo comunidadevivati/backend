@@ -1,6 +1,6 @@
 // Ambiente compartilhado dos testes de integração da autenticação: PostgreSQL real em container,
 // BFF completo (migrations incluídas) e usuários de exemplo. Importar este módulo registra os hooks.
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import cookie from '@fastify/cookie';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
@@ -11,6 +11,10 @@ import {
   EmailVerificationEmailSender,
   type SendEmailVerificationEmail,
 } from '../../../src/auth/application/ports/email-verification-email-sender.js';
+import {
+  MemberRegistry,
+  type MemberRegistration,
+} from '../../../src/auth/application/ports/member-registry.js';
 import {
   PasswordRecoveryEmailSender,
   type SendPasswordRecoveryEmail,
@@ -35,6 +39,11 @@ export let connection: DatabaseConnection;
 export const sentPasswordRecoveryEmails: SendPasswordRecoveryEmail[] = [];
 
 export const sentEmailVerificationEmails: SendEmailVerificationEmail[] = [];
+
+// Pessoas (e membros) "criadas na Core API", substituída por este registro em memória: devolve a
+// mesma Pessoa para a mesma conta, como a Core API. Nomes iniciados por "Recusado" simulam a recusa
+// do contexto Members.
+export const registeredMembers: (MemberRegistration & { id: string })[] = [];
 
 export const sha256 = (value: string) => createHash('sha256').update(value).digest('base64url');
 
@@ -136,6 +145,9 @@ beforeAll(async () => {
     EMAIL_VERIFICATION_TTL_HOURS: '24',
     EMAIL_VERIFICATION_COOLDOWN_SECONDS: '0',
     EMAIL_SEND_TIMEOUT_MS: '5000',
+    // A autenticação não chama a Core API; o endereço só precisa ser válido.
+    CORE_API_URL: 'http://localhost:3001',
+    CORE_API_TOKEN: randomBytes(32).toString('base64url'),
   });
 
   // O ConfigModule valida o ambiente ao carregar o módulo: importa somente após configurá-lo.
@@ -148,6 +160,33 @@ beforeAll(async () => {
         sentPasswordRecoveryEmails.push(message);
 
         return Promise.resolve();
+      },
+    })
+    .overrideProvider(MemberRegistry)
+    .useValue({
+      register: async (registration: MemberRegistration) => {
+        // Demora como uma chamada de rede, para os testes de concorrência se sobreporem.
+        await new Promise((resolve) => {
+          setTimeout(resolve, 50);
+        });
+
+        if (registration.fullName.startsWith('Recusado')) {
+          return null;
+        }
+
+        const existing = registeredMembers.find(
+          ({ accountId }) => accountId === registration.accountId,
+        );
+
+        if (existing) {
+          return existing.id;
+        }
+
+        const id = randomUUID();
+
+        registeredMembers.push({ ...registration, id });
+
+        return id;
       },
     })
     .overrideProvider(EmailVerificationEmailSender)

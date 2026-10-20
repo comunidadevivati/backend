@@ -33,6 +33,7 @@ src/
 │ │ ├── application/
 │ │ ├── infrastructure/
 │ │ └── presentation/
+│ │ └── public/ (contrato para outros contextos)
 │ ├── identity/
 │ ├── authorization/
 │ └── members/
@@ -173,6 +174,8 @@ A direção arquitetural é sempre das camadas externas para as abstrações int
 ## 11. Segurança
 
 - Autenticação por e-mail e senha no BFF (ADR 0003); identidade propagada à Core API ainda pendente.
+- Credencial de serviço provisória do BFF (`CORE_API_TOKEN`, ADR 0006) em todas as rotas, exceto o
+  health check.
 - RBAC + ABAC + ReBAC para autorização.
 - Deny by default.
 - Explicit deny prevalece.
@@ -221,10 +224,59 @@ A extração para serviços independentes somente ocorrerá mediante justificati
 
 Toda decisão arquitetural relevante deverá ser registrada em docs/adr/.
 
-## 16. Deploy de MVP e homologação
+## 16. Contexto Organization implementado
+
+Organização principal (Matriz) e congregações, descritas em
+[docs/domains/organization.md](../../docs/domains/organization.md) e no
+[ADR 0006](../../docs/adr/0006-organization-e-integracao-bff-core-api.md).
+
+- Rotas `/api/v1/organization` e `/api/v1/congregations`, exigindo
+  `Authorization: Bearer <CORE_API_TOKEN>`; o health check permanece público.
+- Erros em RFC 9457 (`application/problem+json`), com `fields` listando somente os campos
+  recusados.
+- Schema `organization`, migrations em `drizzle/` (`pnpm --dir apps/core-api db:generate`) aplicadas
+  ao iniciar; a migration `0001_matriz_e_sede` cria a Matriz e a Sede ativas.
+- Local: copie `.env.example` para `.env.local`, use o mesmo `CORE_API_TOKEN` no BFF e rode
+  `pnpm dev:api`. Testes de integração com PostgreSQL real: `pnpm --dir apps/core-api test:integration`.
+
+## 16.1 Contexto Members implementado
+
+Pessoas, membros e vínculos congregacionais, descritos em
+[docs/domains/members.md](../../docs/domains/members.md) e nos ADRs
+[0007](../../docs/adr/0007-members-e-vinculos-congregacionais.md) e
+[0009](../../docs/adr/0009-pessoa-e-membro-a-partir-de-conta.md).
+
+- Rotas `/api/v1/members` e `/api/v1/memberships`, com a mesma credencial de serviço.
+- Schema `members` (migration `0002_membros`): `people` (uma Pessoa por conta), `members` (um
+  membro por Pessoa) e `memberships`, com índices únicos parciais para o vínculo aberto por
+  congregação e o vínculo principal ativo.
+- `POST /api/v1/members` é chamado somente pelo BFF, na conversão de conta verificada: cria Pessoa
+  e membro na mesma transação, de forma idempotente por conta.
+- Lê congregações somente pelo contrato público `organization/public` (`CongregationDirectory`).
+
+## 16.2 Contexto Gallery implementado (etapa A)
+
+Álbuns e envio de fotos, descritos em [docs/domains/gallery.md](../../docs/domains/gallery.md) e
+no [ADR 0010](../../docs/adr/0010-galeria-de-fotos-r2.md). Publicação, CDN e site público vêm na
+etapa B.
+
+- Rotas `/api/v1/gallery/albums` e `/api/v1/gallery/photos`, com a mesma credencial de serviço.
+- Schema `gallery` (migration `0003_galeria`).
+- O navegador envia direto ao bucket de mídia (URL pré-assinada com o `Content-Type` assinado); a
+  confirmação coloca a foto numa fila em processo (`sharp`, uma foto por vez), retomada ao iniciar.
+- Configuração: `MEDIA_STORAGE` (`disabled` ou `s3`), `MEDIA_S3_ENDPOINT`, `MEDIA_S3_REGION`,
+  `MEDIA_S3_ACCESS_KEY_ID`, `MEDIA_S3_SECRET_ACCESS_KEY`, `MEDIA_BUCKET` (bucket único,
+  compartilhado pelos ambientes) e `MEDIA_KEY_PREFIX` (pasta do ambiente: `prod`, `hml`, `dev`).
+  Com `disabled`, os envios respondem `503`.
+- Desenvolvimento local: `docker compose up -d media` sobe um emulador S3 (`versitygw`) em
+  `http://localhost:9000`, com o bucket já criado; os valores estão no `.env.example`. Os testes
+  de integração sobem o mesmo emulador em container.
+
+## 17. Deploy de MVP e homologação
 
 A Core API possui empacotamento OCI em `Dockerfile` e é publicada como serviço web gratuito pelo
-Blueprint `../../render.yaml`. O Container usa a porta `10000` e expõe o health check
+Blueprint do ambiente (`../../render.yaml` em produção e `../../render.homologation.yaml` em HML).
+O Container usa a porta `10000` e expõe o health check
 `/api/v1/health`.
 
 O plano gratuito aceita cold starts e não possui SLA de produção. O procedimento operacional está
