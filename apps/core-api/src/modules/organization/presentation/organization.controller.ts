@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, Inject, Patch, Post, UseGuards } from '@nestjs/common';
+import { parseOrThrow } from '../../../shared/presentation/request-parsing.js';
 import { ServiceTokenGuard } from '../../../shared/presentation/service-token.guard.js';
 import {
   ChangeOrganizationStatusUseCase,
@@ -6,7 +7,7 @@ import {
   UpdateOrganizationUseCase,
 } from '../application/organization.use-cases.js';
 import { throwInvalidFields, unwrap } from './organization-problem.js';
-import { parseOrThrow, updateOrganizationSchema } from './organization-request.schemas.js';
+import { updateOrganizationSchema } from './organization-request.schemas.js';
 import type { OrganizationSnapshot } from '../domain/organization.js';
 
 // Organização principal (Matriz). Não há criação nem exclusão: a raiz nasce na migration inicial.

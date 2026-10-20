@@ -21,6 +21,12 @@ export const listUsersRequestSchema = z.object({
     .transform((value) => value === 'true')
     .nullable()
     .default(null),
+  // "true" = somente contas que já viraram Pessoa (e membro); "false" = somente as que ainda não.
+  hasPerson: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .nullable()
+    .default(null),
   search: z
     .string()
     .trim()
@@ -33,3 +39,10 @@ export const listUsersRequestSchema = z.object({
 });
 
 export const userIdSchema = z.uuid();
+
+// Limite por pedido: cada conta abre uma transação e uma chamada à Core API.
+const MAX_MEMBERS_PER_REQUEST = 50;
+
+export const createMembersFromUsersRequestSchema = z.strictObject({
+  userIds: z.array(z.uuid()).min(1).max(MAX_MEMBERS_PER_REQUEST),
+});

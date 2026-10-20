@@ -129,6 +129,22 @@ indisponibilidade, `503`.
 | `PATCH /api/v1/congregations/:id`                          | Alteração parcial; exige `version`     |
 | `POST /api/v1/congregations/:id/activate` \| `/deactivate` | Ativa/reativa ou inativa               |
 
+### Membros e vínculos
+
+Mesmas regras de sessão, e-mail verificado, CSRF e repasse de erros das rotas de Organization
+([ADR 0007](../../docs/adr/0007-members-e-vinculos-congregacionais.md)). Não há cadastro nem
+edição direta de membro: a conta verificada vira Pessoa e membro por `POST /api/v1/users/members`
+([ADR 0009](../../docs/adr/0009-pessoa-e-membro-a-partir-de-conta.md)), e os membros vêm com os dados da Pessoa (`person`).
+
+| Rota do BFF                                                          | Descrição                                |
+| -------------------------------------------------------------------- | ---------------------------------------- |
+| `GET /api/v1/members?status=&congregationId=&search=&cursor=&limit=` | Lista paginada `{ items, nextCursor }`   |
+| `GET /api/v1/members/:id`                                            | Consulta                                 |
+| `POST /api/v1/members/:id/activate`                                  | `/deactivate`                            | `/archive`                 | `/restore` | Muda a situação |
+| `GET /api/v1/members/:id/memberships`                                | Histórico de vínculos, com a congregação |
+| `POST /api/v1/members/:id/memberships`                               | Registra vínculo (nasce `PENDING`)       |
+| `POST /api/v1/memberships/:id/activate`                              | `/deactivate`                            | Ativa ou encerra o vínculo |
+
 Configuração: `CORE_API_URL` (origem da Core API, sem `/api/v1`), `CORE_API_TOKEN` (o mesmo da Core
 API) e `CORE_API_TIMEOUT_MS` (padrão 30000, folga para o cold start do Render).
 
@@ -153,12 +169,21 @@ verificado** e `X-CSRF-Token` nas alterações. Conflitos (`409`) trazem `code` 
 | `PATCH /api/v1/users/:id`                                         | Nome, telefone e e-mail; e-mail novo volta a "não verificado"               |
 | `POST /api/v1/users/:id/suspend` e `/reactivate`                  | Suspende (bloqueia login e encerra sessões) ou reativa                      |
 | `DELETE /api/v1/users/:id`                                        | Exclusão definitiva, somente de conta não verificada                        |
+| `POST /api/v1/users/members`                                      | Converte contas verificadas em Pessoa e membro (`{ userIds }`, 1 a 50)      |
 
-Filtros da listagem: `status=ACTIVE|SUSPENDED` e `emailVerified=true|false`, combináveis. Cada
-conta traz `createdAt` e `suspendedAt` (ISO 8601 UTC; nulo quando ativa). Suspender de novo
+Filtros da listagem: `status=ACTIVE|SUSPENDED`, `emailVerified=true|false` e `hasPerson=true|false`,
+combináveis. Cada conta traz `createdAt`, `suspendedAt` (ISO 8601 UTC; nulo quando ativa) e
+`personId` (Pessoa gerada a partir dela ao virar membro; nula enquanto não houver). Suspender de novo
 preserva o momento original e reativar o apaga.
 
 A própria conta não pode ser suspensa nem excluída (`code: self_action`).
+
+A conversão ([ADR 0009](../../docs/adr/0009-pessoa-e-membro-a-partir-de-conta.md)) exige conta com e-mail
+verificado: a Core API cria a Pessoa (com nome, e-mail e telefone da conta) e o membro na mesma
+transação, e o BFF grava `auth.users.person_id`, com a conta bloqueada durante a conversão (uma
+conta gera no máximo uma Pessoa e um membro; repetir é seguro). Responde `200` com o
+resultado de cada conta: `linked`, `already_linked`, `not_found`, `unverified`, `rejected` ou
+`unavailable`.
 
 ## 6. Sessões
 

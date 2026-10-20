@@ -68,6 +68,7 @@ Documentação de segurança:
 - Recuperação de senha com Resend (ADR 0004).
 - Verificação de e-mail do cadastro (ADR 0005).
 - Gestão de usuários pela aplicação web (ADR 0008).
+- Pessoa e membro a partir de conta verificada; o membro referencia a Pessoa (ADR 0009).
 - Sessões seguras.
 - RBAC, ABAC e ReBAC.
 - Escopos organizacionais.
@@ -105,7 +106,7 @@ Especificações dos Bounded Contexts:
 - Organization ([domains/organization.md](domains/organization.md); integração no ADR 0006).
 - Identity.
 - Authorization.
-- Members.
+- Members ([domains/members.md](domains/members.md); decisões no ADR 0007).
 
 Cada domínio deverá documentar:
 

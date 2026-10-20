@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { EmailAddress, PhoneNumber } from '../../../../shared/domain/value-objects/contact.js';
 import { Cnpj } from './cnpj.js';
-import { EmailAddress, PhoneNumber } from './contact.js';
 import { InstitutionalCode, InstitutionalName } from './institutional.js';
 import { PostalAddress } from './postal-address.js';
 

@@ -36,6 +36,13 @@
       "when": 1792448278505,
       "tag": "0004_suspensao_usuario",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792457486351,
+      "tag": "0005_vinculo_pessoa",
+      "breakpoints": true
     }
   ]
 }

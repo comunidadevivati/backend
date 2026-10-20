@@ -16,6 +16,7 @@ const account = (overrides: Partial<UserAccount> = {}): UserAccount => ({
   emailVerified: false,
   createdAt: '2026-10-19T12:00:00Z',
   suspendedAt: null,
+  personId: null,
   ...overrides,
 });
 
@@ -61,6 +62,7 @@ describe('UserManagementUseCases', () => {
       useCases.list({
         status: null,
         emailVerified: false,
+        hasPerson: false,
         search: 'paula',
         cursor: null,
         limit: 1,
@@ -70,6 +72,7 @@ describe('UserManagementUseCases', () => {
     expect(accounts.list).toHaveBeenCalledWith({
       status: null,
       emailVerified: false,
+      hasPerson: false,
       search: 'paula',
       after: null,
       limit: 2,
@@ -81,6 +84,7 @@ describe('UserManagementUseCases', () => {
       useCases.list({
         status: 'ACTIVE',
         emailVerified: null,
+        hasPerson: null,
         search: null,
         cursor: 'u-0',
         limit: 5,

@@ -24,11 +24,15 @@ export interface UserAccount {
   emailVerified: boolean;
   createdAt: string;
   suspendedAt: string | null;
+  // Pessoa gerada a partir da conta (na Core API, ao virar membro); nula enquanto não houver.
+  personId: string | null;
 }
 
 export interface UserAccountListQuery {
   status: UserStatus | null;
   emailVerified: boolean | null;
+  // true = somente contas que já viraram Pessoa (e membro); false = somente as que ainda não.
+  hasPerson: boolean | null;
   // Trecho do nome ou do e-mail.
   search: string | null;
   // Cursor: ID (UUIDv7, ordenável por criação) do último item da página anterior.
@@ -62,6 +66,7 @@ const accountColumns = {
   emailVerified: sql<boolean>`${users.emailVerifiedAt} is not null`,
   createdAt: isoUtc<string>(users.createdAt),
   suspendedAt: isoUtc<string | null>(users.suspendedAt),
+  personId: users.personId,
 };
 
 // Curingas do ILIKE digitados pelo usuário são tratados como texto.
@@ -78,6 +83,7 @@ export class UserAccountRepository {
   async list({
     after,
     emailVerified,
+    hasPerson,
     limit,
     search,
     status,
@@ -92,6 +98,10 @@ export class UserAccountRepository {
       filters.push(
         emailVerified ? isNotNull(users.emailVerifiedAt) : isNull(users.emailVerifiedAt),
       );
+    }
+
+    if (hasPerson !== null) {
+      filters.push(hasPerson ? isNotNull(users.personId) : isNull(users.personId));
     }
 
     if (search) {

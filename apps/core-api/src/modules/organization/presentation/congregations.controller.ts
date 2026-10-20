@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ProblemException } from '../../../shared/presentation/problem-details.js';
+import { parseOrThrow } from '../../../shared/presentation/request-parsing.js';
 import { ServiceTokenGuard } from '../../../shared/presentation/service-token.guard.js';
 import {
   ChangeCongregationStatusUseCase,
@@ -24,7 +25,6 @@ import { throwInvalidFields, unwrap } from './organization-problem.js';
 import {
   congregationIdSchema,
   listCongregationsSchema,
-  parseOrThrow,
   registerCongregationSchema,
   updateCongregationSchema,
 } from './organization-request.schemas.js';
