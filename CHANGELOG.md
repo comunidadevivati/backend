@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.6.0](https://github.com/comunidadevivati/backend/compare/backend-v0.5.0...backend-v0.6.0) (2026-10-20)
+
+
+### ✨ Funcionalidades
+
+* **gallery:** ✨ adiciona álbuns e envio de fotos ao Cloudflare R2 ([e8f0a5e](https://github.com/comunidadevivati/backend/commit/e8f0a5e5902150b71ca94ec392a080e65c7935f5))
+* **gallery:** ✨ adiciona álbuns e envio de fotos ao Cloudflare R2 ([d8985ec](https://github.com/comunidadevivati/backend/commit/d8985ece87341e9eb96677c0f8f32e2a24e7299e))
+* **members:** ✨ adiciona membros e vínculos congregacionais na Core API via BFF ([0b0a4d8](https://github.com/comunidadevivati/backend/commit/0b0a4d8dc1c17011db551e70364c3736f6e69a5a))
+* **members:** ✨ adiciona Pessoa, membros e vínculos congregacionais a partir de contas verificadas ([2cc9ac5](https://github.com/comunidadevivati/backend/commit/2cc9ac56c4c6288497cc6387d63a9b10722ee066))
+* **members:** ✨ cria Pessoa e membro a partir de conta verificada ([6a0044e](https://github.com/comunidadevivati/backend/commit/6a0044e707ecd9cffe6bf28ba82678b8c666f96b))
+* **organization:** ✨ adiciona organização e congregações na Core API via BFF ([42e7a7c](https://github.com/comunidadevivati/backend/commit/42e7a7c2d922eeefbab826399b087ebc0a78cac2))
+* **organization:** ✨ adiciona organização e congregações na Core API via BFF ([23a5b1d](https://github.com/comunidadevivati/backend/commit/23a5b1df071eacb72e183bbe8274ed87c75bb40c))
+* **release:** ✨ promove organização, usuários, membros e galeria para produção ([cb83f36](https://github.com/comunidadevivati/backend/commit/cb83f361d066cae2a34cd5eb367d3a05f97de0f8))
+* **users:** ✨ adiciona gestão de usuários no BFF com filtros e suspensão ([c91dd8d](https://github.com/comunidadevivati/backend/commit/c91dd8d5779b544cb540a3f9dc0607aba9e1aab8))
+* **users:** ✨ adiciona gestão de usuários no BFF com filtros e suspensão ([91a7493](https://github.com/comunidadevivati/backend/commit/91a7493a63bbb650cec70732e4ca3b2bbc2dda36))
+
+
+### 🐛 Correções
+
+* **ci:** 🐛 executa os checks nos PRs que só alteram o changelog ([f9f9944](https://github.com/comunidadevivati/backend/commit/f9f99444fbf44bcb0bcb7a7b77a237d69edc7bf0))
+* **ci:** 🐛 executa os checks nos PRs que só alteram o changelog ([83a8004](https://github.com/comunidadevivati/backend/commit/83a80043a7b69a125189f7c277e418158c07ac0d))
+
+
+### 🔧 Manutenção
+
+* **git:** 🔧 sincroniza a release 0.5.0 na homologation ([2e9a7bf](https://github.com/comunidadevivati/backend/commit/2e9a7bf4ae4ffc90744709b773a2c763d1cc2a09))
+* **members:** 🔧 integra a homologation com a gestão de usuários na feat/membros ([4d9c427](https://github.com/comunidadevivati/backend/commit/4d9c4279d2def155bb44eb53a25434522145b018))
+
 ## [0.5.0](https://github.com/comunidadevivati/backend/compare/backend-v0.4.1...backend-v0.5.0) (2026-10-18)
 
 
