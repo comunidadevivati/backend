@@ -55,7 +55,9 @@ membro), mantendo a posse dos dados por contexto e as regras críticas garantida
   congregação e registro de vínculo continua uma decisão pendente.
 - Um vínculo pode referenciar uma congregação removida do catálogo; a API devolve
   `congregation: null` nesse caso (hoje congregações não são excluídas).
-- O vínculo entre conta digital (Identity) e membro fica para depois.
+- O vínculo entre conta digital (Identity) e membro fica para depois. Atualização: o ADR 0009
+  substitui o PersonProfile dentro do membro por uma Pessoa separada, criada a partir de conta
+  verificada; o membro referencia a Pessoa e não é mais cadastrado nem editado diretamente.
 
 ## Alternativas consideradas
 

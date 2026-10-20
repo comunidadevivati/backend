@@ -47,10 +47,6 @@ describe('Rotas web de Members', () => {
 
     await members.get(ID, request, reply);
 
-    await members.register(undefined, request, reply);
-
-    await members.update(ID, { version: 1 }, request, reply);
-
     for (const action of ['activate', 'deactivate', 'archive', 'restore'] as const) {
       await members[action](ID, request, reply);
     }
@@ -68,8 +64,6 @@ describe('Rotas web de Members', () => {
         },
       ],
       [{ method: 'GET', path: `members/${ID}` }],
-      [{ method: 'POST', path: 'members', body: {} }],
-      [{ method: 'PATCH', path: `members/${ID}`, body: { version: 1 } }],
       [{ method: 'POST', path: `members/${ID}/activate` }],
       [{ method: 'POST', path: `members/${ID}/deactivate` }],
       [{ method: 'POST', path: `members/${ID}/archive` }],
@@ -77,6 +71,14 @@ describe('Rotas web de Members', () => {
       [{ method: 'GET', path: `members/${ID}/memberships` }],
       [{ method: 'POST', path: `members/${ID}/memberships`, body: {} }],
     ]);
+  });
+
+  it('não deve expor o cadastro direto nem a edição de dados pessoais do membro', () => {
+    const { members } = createFixture();
+
+    expect('register' in members).toBe(false);
+
+    expect('update' in members).toBe(false);
   });
 
   it('deve mapear as mudanças de situação dos vínculos, exigindo CSRF', async () => {

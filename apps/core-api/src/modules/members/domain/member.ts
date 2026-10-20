@@ -1,7 +1,4 @@
 import { err, ok, type Result } from '../../../shared/domain/result.js';
-import type { EmailAddress, PhoneNumber } from '../../../shared/domain/value-objects/contact.js';
-import type { BirthDate } from './value-objects/birth-date.js';
-import type { PersonName } from './value-objects/person-name.js';
 
 export type MemberStatus = 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
 
@@ -9,30 +6,13 @@ export type MemberStatusAction = 'activate' | 'deactivate' | 'archive' | 'restor
 
 export type MemberTransitionError = 'invalid_status_transition';
 
-// Perfil pessoal (PersonProfile) do membro: dados mínimos do MVP.
-export interface PersonProfile {
-  fullName: PersonName;
-  birthDate: BirthDate | null;
-  phone: PhoneNumber | null;
-  email: EmailAddress | null;
-}
-
+// O membro não guarda dados pessoais: eles pertencem à Pessoa, referenciada pelo ID.
 export interface MemberSnapshot {
   id: string;
-  fullName: string;
-  birthDate: string | null;
-  phone: string | null;
-  email: string | null;
+  personId: string;
   status: MemberStatus;
   version: number;
 }
-
-const profileToState = (profile: PersonProfile) => ({
-  fullName: profile.fullName.value,
-  birthDate: profile.birthDate?.value ?? null,
-  phone: profile.phone?.value ?? null,
-  email: profile.email?.value ?? null,
-});
 
 // Situação de destino e situações de origem permitidas para cada ação.
 const TRANSITIONS: Record<MemberStatusAction, { from: MemberStatus[]; to: MemberStatus }> = {
@@ -43,13 +23,13 @@ const TRANSITIONS: Record<MemberStatusAction, { from: MemberStatus[]; to: Member
   restore: { from: ['ARCHIVED'], to: 'INACTIVE' },
 };
 
-// Pessoa membro da comunidade. Nasce ACTIVE; ARCHIVED é somente leitura até ser restaurado.
+// Participação de uma Pessoa na comunidade. Nasce ACTIVE; uma Pessoa tem no máximo um membro.
 // Os vínculos com congregações são o Aggregate Membership, referenciado pelo ID do membro.
 export class Member {
   private constructor(private state: MemberSnapshot) {}
 
-  static register(id: string, profile: PersonProfile): Member {
-    return new Member({ id, ...profileToState(profile), status: 'ACTIVE', version: 1 });
+  static enroll(id: string, personId: string): Member {
+    return new Member({ id, personId, status: 'ACTIVE', version: 1 });
   }
 
   // Reconstitui um estado já validado e persistido.
@@ -67,20 +47,6 @@ export class Member {
 
   get version(): number {
     return this.state.version;
-  }
-
-  get isArchived(): boolean {
-    return this.state.status === 'ARCHIVED';
-  }
-
-  updateProfile(profile: PersonProfile): Result<void, 'member_archived'> {
-    if (this.isArchived) {
-      return err('member_archived');
-    }
-
-    this.state = { ...this.state, ...profileToState(profile) };
-
-    return ok();
   }
 
   changeStatus(action: MemberStatusAction): Result<void, MemberTransitionError> {

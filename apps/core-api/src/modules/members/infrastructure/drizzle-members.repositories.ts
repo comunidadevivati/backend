@@ -6,14 +6,17 @@ import { uuidv7 } from '../../../shared/infrastructure/id/uuid-v7.js';
 import {
   Clock,
   IdGenerator,
+  MemberQueries,
   MemberRepository,
   MembershipRepository,
   type MemberListQuery,
+  type MemberView,
 } from '../application/ports.js';
 import { Member, type MemberSnapshot } from '../domain/member.js';
 import { Membership, type MembershipSnapshot } from '../domain/membership.js';
-import { members, memberships } from './database/members.schema.js';
+import { members, memberships, people } from './database/members.schema.js';
 import type { Database } from '../../../shared/infrastructure/database/database.js';
+import type { Person } from '../domain/person.js';
 
 // Os registros Drizzle não saem desta camada: são convertidos em snapshots do Domain.
 
@@ -25,12 +28,45 @@ const OPEN_STATUSES = ['PENDING', 'ACTIVE'] as const;
 
 const toMemberSnapshot = (row: MemberRow): MemberSnapshot => ({
   id: row.id,
-  fullName: row.fullName,
-  birthDate: row.birthDate,
-  phone: row.phone,
-  email: row.email,
+  personId: row.personId,
   status: row.status,
   version: row.version,
+});
+
+// Leitura: o membro com os dados pessoais da Pessoa.
+const memberViewColumns = {
+  id: members.id,
+  status: members.status,
+  version: members.version,
+  personId: people.id,
+  fullName: people.fullName,
+  birthDate: people.birthDate,
+  phone: people.phone,
+  email: people.email,
+};
+
+interface MemberViewRow {
+  id: string;
+  status: MemberSnapshot['status'];
+  version: number;
+  personId: string;
+  fullName: string;
+  birthDate: string | null;
+  phone: string | null;
+  email: string | null;
+}
+
+const toMemberView = ({ personId, ...row }: MemberViewRow): MemberView => ({
+  id: row.id,
+  status: row.status,
+  version: row.version,
+  person: {
+    id: personId,
+    fullName: row.fullName,
+    birthDate: row.birthDate,
+    phone: row.phone,
+    email: row.email,
+  },
 });
 
 const toMembershipSnapshot = (row: MembershipRow): MembershipSnapshot => ({
@@ -68,13 +104,64 @@ export class DrizzleMemberRepository extends MemberRepository {
     return row ? Member.restore(toMemberSnapshot(row)) : null;
   }
 
+  // Pessoa e membro na mesma transação. A restrição única de people.account_id decide entre pedidos
+  // simultâneos para a mesma conta.
+  async enroll(person: Person, member: Member): Promise<'enrolled' | 'account_taken'> {
+    try {
+      await this.db.transaction(async (transaction) => {
+        await transaction.insert(people).values(person.toSnapshot());
+
+        await transaction.insert(members).values(member.toSnapshot());
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        return 'account_taken';
+      }
+
+      throw error;
+    }
+
+    return 'enrolled';
+  }
+
+  async update(member: Member): Promise<number | null> {
+    const { id, status, version } = member.toSnapshot();
+
+    const [row] = await this.db
+      .update(members)
+      .set({ status, ...nextVersion })
+      .where(and(eq(members.id, id), eq(members.version, version)))
+      .returning({ version: members.version });
+
+    return row?.version ?? null;
+  }
+}
+
+@Injectable()
+export class DrizzleMemberQueries extends MemberQueries {
+  private readonly db: Database;
+
+  constructor(@Inject(DatabaseService) databaseService: DatabaseService) {
+    super();
+
+    this.db = databaseService.db;
+  }
+
+  findById(id: string): Promise<MemberView | null> {
+    return this.findOne(eq(members.id, id));
+  }
+
+  findByAccountId(accountId: string): Promise<MemberView | null> {
+    return this.findOne(eq(people.accountId, accountId));
+  }
+
   async list({
     after,
     congregationId,
     limit,
     search,
     status,
-  }: MemberListQuery): Promise<MemberSnapshot[]> {
+  }: MemberListQuery): Promise<MemberView[]> {
     const filters: SQL[] = [];
 
     if (status) {
@@ -82,7 +169,7 @@ export class DrizzleMemberRepository extends MemberRepository {
     }
 
     if (search) {
-      filters.push(ilike(members.fullName, `%${escapeLike(search)}%`));
+      filters.push(ilike(people.fullName, `%${escapeLike(search)}%`));
     }
 
     if (congregationId) {
@@ -107,29 +194,29 @@ export class DrizzleMemberRepository extends MemberRepository {
     }
 
     const rows = await this.db
-      .select()
+      .select(memberViewColumns)
       .from(members)
+      .innerJoin(people, eq(people.id, members.personId))
       .where(and(...filters))
       .orderBy(asc(members.id))
       .limit(limit);
 
-    return rows.map((row) => toMemberSnapshot(row));
+    return rows.map((row) => toMemberView(row));
   }
 
   async insert(member: Member): Promise<void> {
     await this.db.insert(members).values(member.toSnapshot());
   }
 
-  async update(member: Member): Promise<number | null> {
-    const { birthDate, email, fullName, id, phone, status, version } = member.toSnapshot();
-
+  private async findOne(condition: SQL): Promise<MemberView | null> {
     const [row] = await this.db
-      .update(members)
-      .set({ fullName, birthDate, phone, email, status, ...nextVersion })
-      .where(and(eq(members.id, id), eq(members.version, version)))
-      .returning({ version: members.version });
+      .select(memberViewColumns)
+      .from(members)
+      .innerJoin(people, eq(people.id, members.personId))
+      .where(condition)
+      .limit(1);
 
-    return row?.version ?? null;
+    return row ? toMemberView(row) : null;
   }
 }
 

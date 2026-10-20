@@ -1,13 +1,28 @@
-import type { Member, MemberSnapshot, MemberStatus } from '../domain/member.js';
+import type { Member, MemberStatus } from '../domain/member.js';
 import type { Membership, MembershipSnapshot } from '../domain/membership.js';
+import type { Person } from '../domain/person.js';
 
 // As Ports são classes abstratas para servirem também de token de injeção na composição.
+
+// Membro como exposto pela API (leitura): situação do membro com os dados pessoais da Pessoa.
+export interface MemberView {
+  id: string;
+  status: MemberStatus;
+  version: number;
+  person: {
+    id: string;
+    fullName: string;
+    birthDate: string | null;
+    phone: string | null;
+    email: string | null;
+  };
+}
 
 export interface MemberListQuery {
   status: MemberStatus | null;
   // Somente membros com vínculo PENDING ou ACTIVE nesta congregação.
   congregationId: string | null;
-  // Trecho do nome, sem diferenciar maiúsculas de minúsculas.
+  // Trecho do nome da Pessoa, sem diferenciar maiúsculas de minúsculas.
   search: string | null;
   // Cursor: ID (UUIDv7, ordenável por criação) do último item da página anterior.
   after: string | null;
@@ -17,13 +32,23 @@ export interface MemberListQuery {
 export abstract class MemberRepository {
   abstract findById(id: string): Promise<Member | null>;
 
-  abstract list(query: MemberListQuery): Promise<MemberSnapshot[]>;
-
-  abstract insert(member: Member): Promise<void>;
+  // Grava a Pessoa e o seu Membro na mesma transação. Restrição do banco: uma Pessoa por conta
+  // ("account_taken" quando outra gravação para a mesma conta venceu).
+  abstract enroll(person: Person, member: Member): Promise<'enrolled' | 'account_taken'>;
 
   // Controle otimista: grava somente se a versão persistida ainda for a do Aggregate carregado.
   // Retorna a nova versão, ou null quando outra escrita venceu.
   abstract update(member: Member): Promise<number | null>;
+}
+
+// Leitura (CQRS seletivo): membros com os dados da Pessoa.
+export abstract class MemberQueries {
+  abstract findById(id: string): Promise<MemberView | null>;
+
+  // Membro da Pessoa originada pela conta, se houver.
+  abstract findByAccountId(accountId: string): Promise<MemberView | null>;
+
+  abstract list(query: MemberListQuery): Promise<MemberView[]>;
 }
 
 export abstract class MembershipRepository {

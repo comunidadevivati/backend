@@ -3,7 +3,6 @@ export type MembersError =
   | { type: 'invalid_fields'; fields: string[] }
   | { type: 'version_conflict' }
   | { type: 'invalid_status_transition' }
-  | { type: 'member_archived' }
   | { type: 'member_inactive' }
   | { type: 'member_has_open_memberships' }
   | { type: 'congregation_inactive' }
@@ -15,8 +14,6 @@ export const notFound = { type: 'not_found' } as const;
 export const versionConflict = { type: 'version_conflict' } as const;
 
 export const invalidStatusTransition = { type: 'invalid_status_transition' } as const;
-
-export const memberArchived = { type: 'member_archived' } as const;
 
 export const memberInactive = { type: 'member_inactive' } as const;
 

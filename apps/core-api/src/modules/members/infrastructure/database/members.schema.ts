@@ -29,15 +29,28 @@ const auditColumns = {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 };
 
+// Pessoa: cadastro completo, originado de uma conta verificada do BFF. account_id referencia a conta
+// somente pelo ID estável (sem chave estrangeira entre schemas) e é único: uma Pessoa por conta.
 // Nome, telefone (somente dígitos) e e-mail (minúsculas) são normalizados pelo Domain.
+export const people = membersSchema.table('people', {
+  id: uuid('id').primaryKey(),
+  accountId: uuid('account_id').notNull().unique(),
+  fullName: text('full_name').notNull(),
+  birthDate: date('birth_date', { mode: 'string' }),
+  phone: text('phone'),
+  email: text('email'),
+  ...auditColumns,
+});
+
+// Membro: participação de uma Pessoa na comunidade, sem dados pessoais. Uma Pessoa, um membro.
 export const members = membersSchema.table(
   'members',
   {
     id: uuid('id').primaryKey(),
-    fullName: text('full_name').notNull(),
-    birthDate: date('birth_date', { mode: 'string' }),
-    phone: text('phone'),
-    email: text('email'),
+    personId: uuid('person_id')
+      .notNull()
+      .unique()
+      .references(() => people.id),
     status: memberStatus('status').notNull().default('ACTIVE'),
     ...auditColumns,
   },

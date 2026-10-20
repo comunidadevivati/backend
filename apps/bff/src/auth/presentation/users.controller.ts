@@ -17,12 +17,17 @@ import {
   Req,
 } from '@nestjs/common';
 import {
+  CreateMembersFromUsersUseCase,
+  type MemberFromUserOutcome,
+} from '../application/create-members-from-users.use-case.js';
+import {
   UserManagementUseCases,
   type ChangeUserStatusResult,
   type UserPage,
 } from '../application/user-management.use-cases.js';
 import { SessionCookieService } from './session-cookie.service.js';
 import {
+  createMembersFromUsersRequestSchema,
   createUserRequestSchema,
   listUsersRequestSchema,
   updateUserRequestSchema,
@@ -86,6 +91,8 @@ export class UsersController {
   constructor(
     @Inject(UserManagementUseCases)
     private readonly users: UserManagementUseCases,
+    @Inject(CreateMembersFromUsersUseCase)
+    private readonly createMembersFromUsers: CreateMembersFromUsersUseCase,
     @Inject(SessionCookieService)
     private readonly sessionCookies: SessionCookieService,
   ) {}
@@ -126,6 +133,22 @@ export class UsersController {
     }
 
     return result.account;
+  }
+
+  // Converte contas com e-mail verificado em membros (um membro nunca é cadastrado do zero). Responde
+  // 200 com o resultado de cada conta, na ordem recebida: a recusa de uma não impede as demais.
+  @Post('members')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  async createMembers(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+  ): Promise<{ items: MemberFromUserOutcome[] }> {
+    await this.requireOperator(request, true);
+
+    const { userIds } = parse(createMembersFromUsersRequestSchema, body);
+
+    return { items: await this.createMembersFromUsers.execute(userIds) };
   }
 
   @Patch(':id')

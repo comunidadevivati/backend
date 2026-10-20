@@ -6,21 +6,13 @@ const text = z.string().max(300);
 
 const nullableText = text.nullable();
 
-const version = z.number().int().min(1);
-
-export const registerMemberSchema = z.strictObject({
+// Conta verificada (BFF) que vira Pessoa e membro, com os dados copiados da conta.
+export const enrollMemberSchema = z.strictObject({
+  accountId: z.uuid(),
   fullName: text,
   birthDate: nullableText.default(null),
   phone: nullableText.default(null),
   email: nullableText.default(null),
-});
-
-export const updateMemberSchema = z.strictObject({
-  version,
-  fullName: text.optional(),
-  birthDate: nullableText.optional(),
-  phone: nullableText.optional(),
-  email: nullableText.optional(),
 });
 
 export const listMembersSchema = z.object({

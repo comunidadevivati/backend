@@ -1,26 +1,33 @@
 # Domínio Members
 
 Implementação: `apps/core-api/src/modules/members`. Decisões:
-[ADR 0007](../adr/0007-members-e-vinculos-congregacionais.md).
+[ADR 0007](../adr/0007-members-e-vinculos-congregacionais.md) e
+[ADR 0009](../adr/0009-pessoa-e-membro-a-partir-de-conta.md) (Pessoa e membro a partir de conta verificada).
 
 ## Linguagem ubíqua
 
-| Termo             | Significado                                                                    |
-| ----------------- | ------------------------------------------------------------------------------ |
-| Membro            | Pessoa que participa da comunidade.                                            |
-| Perfil pessoal    | Dados da pessoa dentro do membro: nome, data de nascimento, telefone e e-mail. |
-| Vínculo           | Participação do membro em uma congregação, com início e fim.                   |
-| Vínculo principal | A congregação de referência do membro; no máximo um ativo por vez.             |
-| Vínculo aberto    | Vínculo PENDING ou ACTIVE.                                                     |
-| Arquivado         | Membro retirado das listas do dia a dia, preservado para histórico.            |
+| Termo             | Significado                                                           |
+| ----------------- | --------------------------------------------------------------------- |
+| Pessoa            | Cadastro completo de alguém, criado a partir de uma conta verificada. |
+| Membro            | Pessoa que participa da comunidade; não guarda dados pessoais.        |
+| Vínculo           | Participação do membro em uma congregação, com início e fim.          |
+| Vínculo principal | A congregação de referência do membro; no máximo um ativo por vez.    |
+| Vínculo aberto    | Vínculo PENDING ou ACTIVE.                                            |
+| Arquivado         | Membro retirado das listas do dia a dia, preservado para histórico.   |
 
 ## Aggregates
 
+### Person
+
+- Campos: conta de origem (`accountId`, única), nome completo, data de nascimento, telefone,
+  e-mail e versão. O cadastro completo (foto, endereço, dependentes etc.) virá com a tela da Pessoa.
+- Nasce somente na conversão de uma conta verificada, com os dados da conta.
+
 ### Member
 
-- Campos: nome completo, data de nascimento, telefone, e-mail, situação e versão.
+- Campos: Pessoa (`personId`, única: uma Pessoa, um membro), situação e versão.
 - Situações: nasce `ACTIVE`; `ACTIVE ⇄ INACTIVE`; `INACTIVE → ARCHIVED`; `ARCHIVED → INACTIVE`.
-- Arquivado: perfil somente leitura até ser restaurado.
+- Pessoa e membro nascem juntos, na mesma transação.
 
 ### Membership
 
@@ -38,7 +45,8 @@ Implementação: `apps/core-api/src/modules/members`. Decisões:
   permitido.
 - Inativar ou arquivar o membro exige que não haja vínculo aberto.
 - Vínculo encerrado não é reaberto nem apagado.
-- Toda alteração de perfil exige a versão lida (concorrência otimista).
+- Uma Pessoa por conta e um membro por Pessoa (restrições únicas): converter a mesma conta de novo
+  devolve o mesmo membro.
 
 ## Use Cases
 
@@ -46,15 +54,16 @@ Implementação: `apps/core-api/src/modules/members`. Decisões:
 | ---------------------- | --------------------------------------------------------------- |
 | ListMembers (cursor)   | `GET /members?status&congregationId&search&cursor&limit`        |
 | GetMember              | `GET /members/:id`                                              |
-| RegisterMember         | `POST /members`                                                 |
-| UpdateMember           | `PATCH /members/:id`                                            |
+| EnrollMember           | `POST /members` (`{ accountId, fullName, email, phone }`, BFF)  |
 | ChangeMemberStatus     | `POST /members/:id/{activate,deactivate,archive,restore}`       |
 | ListMemberships        | `GET /members/:id/memberships` (histórico, com a congregação)   |
 | RegisterMembership     | `POST /members/:id/memberships` (`{ congregationId, primary }`) |
 | ChangeMembershipStatus | `POST /memberships/:id/{activate,deactivate}`                   |
 
-O filtro `congregationId` lista os membros com vínculo aberto na congregação; `search` busca um
-trecho do nome sem diferenciar maiúsculas de minúsculas.
+Membros são devolvidos com os dados da Pessoa (`person`). `POST /members` responde `201` ao criar
+Pessoa e membro e `200` com o mesmo membro quando a conta já foi convertida. O filtro
+`congregationId` lista os membros com vínculo aberto na congregação; `search` busca um trecho do
+nome da Pessoa sem diferenciar maiúsculas de minúsculas.
 
 ## Integração com Organization
 

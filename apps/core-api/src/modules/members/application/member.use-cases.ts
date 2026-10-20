@@ -1,26 +1,23 @@
 import { err, ok, type Result } from '../../../shared/domain/result.js';
-import {
-  Member,
-  type MemberSnapshot,
-  type MemberStatus,
-  type MemberStatusAction,
-} from '../domain/member.js';
+import { Member, type MemberStatus, type MemberStatusAction } from '../domain/member.js';
+import { Person } from '../domain/person.js';
 import {
   invalidFields,
   invalidStatusTransition,
-  memberArchived,
   memberHasOpenMemberships,
   notFound,
   versionConflict,
   type MembersError,
 } from './members-errors.js';
-import {
-  buildPersonProfile,
-  mergeProfilePatch,
-  type PersonProfileInput,
-  type PersonProfilePatch,
-} from './profile-input.js';
-import type { Clock, IdGenerator, MemberRepository, MembershipRepository } from './ports.js';
+import { buildPersonProfile, type PersonProfileInput } from './profile-input.js';
+import type {
+  Clock,
+  IdGenerator,
+  MemberQueries,
+  MemberRepository,
+  MemberView,
+  MembershipRepository,
+} from './ports.js';
 
 export interface ListMembersQuery {
   status: MemberStatus | null;
@@ -31,14 +28,19 @@ export interface ListMembersQuery {
 }
 
 export interface MemberPage {
-  items: MemberSnapshot[];
+  items: MemberView[];
   nextCursor: string | null;
 }
 
-export interface UpdateMemberCommand {
-  id: string;
-  expectedVersion: number;
-  patch: PersonProfilePatch;
+// Dados da conta verificada que origina a Pessoa e o membro.
+export interface EnrollMemberCommand extends PersonProfileInput {
+  accountId: string;
+}
+
+export interface EnrolledMember {
+  member: MemberView;
+  // false quando a conta já tinha Pessoa e membro (repetição do pedido).
+  created: boolean;
 }
 
 export interface ChangeMemberStatusCommand {
@@ -46,19 +48,14 @@ export interface ChangeMemberStatusCommand {
   action: MemberStatusAction;
 }
 
-type MemberResult = Result<MemberSnapshot, MembersError>;
-
-const withVersion = (snapshot: MemberSnapshot, version: number): MemberSnapshot => ({
-  ...snapshot,
-  version,
-});
+type MemberResult = Result<MemberView, MembersError>;
 
 export class ListMembersUseCase {
-  constructor(private readonly members: MemberRepository) {}
+  constructor(private readonly queries: MemberQueries) {}
 
   // Paginação por cursor: busca um item a mais para saber se existe a próxima página.
   async execute({ cursor, limit, ...filters }: ListMembersQuery): Promise<MemberPage> {
-    const rows = await this.members.list({ ...filters, after: cursor, limit: limit + 1 });
+    const rows = await this.queries.list({ ...filters, after: cursor, limit: limit + 1 });
 
     const items = rows.slice(0, limit);
 
@@ -70,79 +67,63 @@ export class ListMembersUseCase {
 }
 
 export class GetMemberUseCase {
-  constructor(private readonly members: MemberRepository) {}
+  constructor(private readonly queries: MemberQueries) {}
 
   async execute(id: string): Promise<MemberResult> {
-    const member = await this.members.findById(id);
+    const member = await this.queries.findById(id);
 
-    return member ? ok(member.toSnapshot()) : err(notFound);
+    return member ? ok(member) : err(notFound);
   }
 }
 
-export class RegisterMemberUseCase {
+// Um membro nunca é cadastrado do zero: a conta verificada vira Pessoa (com os dados da conta) e a
+// Pessoa vira membro, na mesma transação. Idempotente por conta: repetir o pedido devolve o mesmo
+// membro, inclusive quando a primeira resposta se perdeu.
+export class EnrollMemberUseCase {
   constructor(
     private readonly members: MemberRepository,
+    private readonly queries: MemberQueries,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
   ) {}
 
-  // O membro nasce ACTIVE; os vínculos com congregações são registrados à parte.
-  async execute(input: PersonProfileInput): Promise<MemberResult> {
+  async execute({
+    accountId,
+    ...input
+  }: EnrollMemberCommand): Promise<Result<EnrolledMember, MembersError>> {
+    const existing = await this.queries.findByAccountId(accountId);
+
+    if (existing) {
+      return ok({ member: existing, created: false });
+    }
+
     const profile = buildPersonProfile(input, this.clock.today());
 
     if (!profile.ok) {
       return err(invalidFields(profile.error));
     }
 
-    const member = Member.register(this.ids.next(), profile.value);
+    const person = Person.register(this.ids.next(), accountId, profile.value);
 
-    await this.members.insert(member);
+    const member = Member.enroll(this.ids.next(), person.id);
 
-    return ok(member.toSnapshot());
-  }
-}
+    // Outro pedido para a mesma conta gravou primeiro: devolve o membro dele.
+    if ((await this.members.enroll(person, member)) === 'account_taken') {
+      const winner = await this.queries.findByAccountId(accountId);
 
-export class UpdateMemberUseCase {
-  constructor(
-    private readonly members: MemberRepository,
-    private readonly clock: Clock,
-  ) {}
-
-  async execute({ expectedVersion, id, patch }: UpdateMemberCommand): Promise<MemberResult> {
-    const member = await this.members.findById(id);
-
-    if (!member) {
-      return err(notFound);
+      return winner ? ok({ member: winner, created: false }) : err(versionConflict);
     }
 
-    if (member.version !== expectedVersion) {
-      return err(versionConflict);
-    }
+    const created = await this.queries.findById(member.id);
 
-    const { birthDate, email, fullName, phone } = member.toSnapshot();
-
-    const profile = buildPersonProfile(
-      mergeProfilePatch({ fullName, birthDate, phone, email }, patch),
-      this.clock.today(),
-    );
-
-    if (!profile.ok) {
-      return err(invalidFields(profile.error));
-    }
-
-    if (!member.updateProfile(profile.value).ok) {
-      return err(memberArchived);
-    }
-
-    const version = await this.members.update(member);
-
-    return version === null ? err(versionConflict) : ok(withVersion(member.toSnapshot(), version));
+    return created ? ok({ member: created, created: true }) : err(notFound);
   }
 }
 
 export class ChangeMemberStatusUseCase {
   constructor(
     private readonly members: MemberRepository,
+    private readonly queries: MemberQueries,
     private readonly memberships: MembershipRepository,
   ) {}
 
@@ -166,8 +147,12 @@ export class ChangeMemberStatusUseCase {
       return err(invalidStatusTransition);
     }
 
-    const version = await this.members.update(member);
+    if ((await this.members.update(member)) === null) {
+      return err(versionConflict);
+    }
 
-    return version === null ? err(versionConflict) : ok(withVersion(member.toSnapshot(), version));
+    const view = await this.queries.findById(id);
+
+    return view ? ok(view) : err(notFound);
   }
 }

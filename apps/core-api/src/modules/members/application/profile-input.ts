@@ -2,7 +2,7 @@ import { err, ok, type Result } from '../../../shared/domain/result.js';
 import { EmailAddress, PhoneNumber } from '../../../shared/domain/value-objects/contact.js';
 import { BirthDate } from '../domain/value-objects/birth-date.js';
 import { PersonName } from '../domain/value-objects/person-name.js';
-import type { PersonProfile } from '../domain/member.js';
+import type { PersonProfile } from '../domain/person.js';
 
 // Dados pessoais como chegam do transporte. Opcionais vazios ou null ficam sem valor.
 export interface PersonProfileInput {
@@ -11,19 +11,6 @@ export interface PersonProfileInput {
   phone: string | null;
   email: string | null;
 }
-
-// Alteração parcial: campos ausentes mantêm o valor atual.
-export type PersonProfilePatch = {
-  [K in keyof PersonProfileInput]?: PersonProfileInput[K] | undefined;
-};
-
-export const mergeProfilePatch = (
-  current: PersonProfileInput,
-  patch: PersonProfilePatch,
-): PersonProfileInput => ({
-  ...current,
-  ...Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)),
-});
 
 const isBlank = (raw: string | null): raw is null => raw === null || raw.trim() === '';
 

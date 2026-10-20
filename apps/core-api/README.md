@@ -241,13 +241,17 @@ Organização principal (Matriz) e congregações, descritas em
 
 ## 16.1 Contexto Members implementado
 
-Membros e vínculos congregacionais, descritos em
-[docs/domains/members.md](../../docs/domains/members.md) e no
-[ADR 0007](../../docs/adr/0007-members-e-vinculos-congregacionais.md).
+Pessoas, membros e vínculos congregacionais, descritos em
+[docs/domains/members.md](../../docs/domains/members.md) e nos ADRs
+[0007](../../docs/adr/0007-members-e-vinculos-congregacionais.md) e
+[0009](../../docs/adr/0009-pessoa-e-membro-a-partir-de-conta.md).
 
 - Rotas `/api/v1/members` e `/api/v1/memberships`, com a mesma credencial de serviço.
-- Schema `members` (migration `0002_membros`), com índices únicos parciais para o vínculo aberto
-  por congregação e o vínculo principal ativo.
+- Schema `members` (migration `0002_membros`): `people` (uma Pessoa por conta), `members` (um
+  membro por Pessoa) e `memberships`, com índices únicos parciais para o vínculo aberto por
+  congregação e o vínculo principal ativo.
+- `POST /api/v1/members` é chamado somente pelo BFF, na conversão de conta verificada: cria Pessoa
+  e membro na mesma transação, de forma idempotente por conta.
 - Lê congregações somente pelo contrato público `organization/public` (`CongregationDirectory`).
 
 ## 17. Deploy de MVP e homologação

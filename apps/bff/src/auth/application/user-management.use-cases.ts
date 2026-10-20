@@ -15,6 +15,7 @@ import type { RegisterUserCommand } from './register-user.use-case.js';
 export interface ListUsersQuery {
   status: UserStatus | null;
   emailVerified: boolean | null;
+  hasPerson: boolean | null;
   search: string | null;
   cursor: string | null;
   limit: number;

@@ -20,7 +20,6 @@ const CONFLICTS: Record<Exclude<MembersError['type'], 'not_found' | 'invalid_fie
   version_conflict:
     'O registro foi alterado por outra operação. Recarregue os dados e tente novamente.',
   invalid_status_transition: 'A situação atual não permite esta operação.',
-  member_archived: 'O membro está arquivado. Restaure-o antes de alterar os dados.',
   member_inactive: 'O membro não está ativo.',
   member_has_open_memberships:
     'Encerre os vínculos ativos ou pendentes do membro antes desta operação.',

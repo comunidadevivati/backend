@@ -2,10 +2,9 @@ import { Module } from '@nestjs/common';
 import { OrganizationPublicModule } from '../organization/public/organization-public.module.js';
 import {
   ChangeMemberStatusUseCase,
+  EnrollMemberUseCase,
   GetMemberUseCase,
   ListMembersUseCase,
-  RegisterMemberUseCase,
-  UpdateMemberUseCase,
 } from './application/member.use-cases.js';
 import {
   ChangeMembershipStatusUseCase,
@@ -16,10 +15,12 @@ import {
   Clock,
   CongregationCatalog,
   IdGenerator,
+  MemberQueries,
   MemberRepository,
   MembershipRepository,
 } from './application/ports.js';
 import {
+  DrizzleMemberQueries,
   DrizzleMemberRepository,
   DrizzleMembershipRepository,
   SystemClock,
@@ -36,37 +37,39 @@ import { MembershipsController } from './presentation/memberships.controller.js'
   controllers: [MembersController, MembershipsController],
   providers: [
     { provide: MemberRepository, useClass: DrizzleMemberRepository },
+    { provide: MemberQueries, useClass: DrizzleMemberQueries },
     { provide: MembershipRepository, useClass: DrizzleMembershipRepository },
     { provide: CongregationCatalog, useClass: OrganizationCongregationCatalog },
     { provide: IdGenerator, useClass: UuidV7IdGenerator },
     { provide: Clock, useClass: SystemClock },
     {
       provide: ListMembersUseCase,
-      useFactory: (members: MemberRepository) => new ListMembersUseCase(members),
-      inject: [MemberRepository],
+      useFactory: (queries: MemberQueries) => new ListMembersUseCase(queries),
+      inject: [MemberQueries],
     },
     {
       provide: GetMemberUseCase,
-      useFactory: (members: MemberRepository) => new GetMemberUseCase(members),
-      inject: [MemberRepository],
+      useFactory: (queries: MemberQueries) => new GetMemberUseCase(queries),
+      inject: [MemberQueries],
     },
     {
-      provide: RegisterMemberUseCase,
-      useFactory: (members: MemberRepository, ids: IdGenerator, clock: Clock) =>
-        new RegisterMemberUseCase(members, ids, clock),
-      inject: [MemberRepository, IdGenerator, Clock],
-    },
-    {
-      provide: UpdateMemberUseCase,
-      useFactory: (members: MemberRepository, clock: Clock) =>
-        new UpdateMemberUseCase(members, clock),
-      inject: [MemberRepository, Clock],
+      provide: EnrollMemberUseCase,
+      useFactory: (
+        members: MemberRepository,
+        queries: MemberQueries,
+        ids: IdGenerator,
+        clock: Clock,
+      ) => new EnrollMemberUseCase(members, queries, ids, clock),
+      inject: [MemberRepository, MemberQueries, IdGenerator, Clock],
     },
     {
       provide: ChangeMemberStatusUseCase,
-      useFactory: (members: MemberRepository, memberships: MembershipRepository) =>
-        new ChangeMemberStatusUseCase(members, memberships),
-      inject: [MemberRepository, MembershipRepository],
+      useFactory: (
+        members: MemberRepository,
+        queries: MemberQueries,
+        memberships: MembershipRepository,
+      ) => new ChangeMemberStatusUseCase(members, queries, memberships),
+      inject: [MemberRepository, MemberQueries, MembershipRepository],
     },
     {
       provide: ListMembershipsUseCase,

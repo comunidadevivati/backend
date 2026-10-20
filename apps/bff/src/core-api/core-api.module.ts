@@ -7,6 +7,6 @@ import { CoreApiForwarder } from './presentation/core-api-forwarder.service.js';
 // Integração com a Core API (ADR 0006), compartilhada pelos módulos das rotas de negócio.
 @Module({
   providers: [SessionService, SessionCookieService, CoreApiClient, CoreApiForwarder],
-  exports: [CoreApiForwarder],
+  exports: [CoreApiClient, CoreApiForwarder],
 })
 export class CoreApiModule {}

@@ -548,9 +548,12 @@ Authorization:
 
 Members:
 
-- Member and Membership are separate Aggregates.
+- Person, Member and Membership are separate Aggregates (ADR 0009).
 
-- PersonProfile belongs inside Member.
+- Person is the full personal record; Member holds no personal data and references the Person.
+
+- Chain: registered account → verified account → Person → Member. A Person is only created
+  from a verified account, and only a Person can become a Member.
 
 - Member states: ACTIVE, INACTIVE, ARCHIVED.
 

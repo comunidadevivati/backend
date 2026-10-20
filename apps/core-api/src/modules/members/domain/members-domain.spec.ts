@@ -1,12 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { memberSnapshot, membershipSnapshot, TODAY } from '../members.fixtures.js';
-import {
-  Member,
-  type MemberStatus,
-  type MemberStatusAction,
-  type PersonProfile,
-} from './member.js';
+import { Member, type MemberStatus, type MemberStatusAction } from './member.js';
 import { Membership } from './membership.js';
+import { Person, type PersonProfile } from './person.js';
 import { BirthDate } from './value-objects/birth-date.js';
 import { PersonName } from './value-objects/person-name.js';
 
@@ -57,14 +53,29 @@ describe('BirthDate', () => {
   });
 });
 
-describe('Member', () => {
-  it('deve nascer ACTIVE na versão 1', () => {
-    expect(Member.register('id-1', profile()).toSnapshot()).toEqual({
-      id: 'id-1',
+describe('Person', () => {
+  it('deve nascer na versão 1 com a conta de origem e os dados pessoais', () => {
+    const person = Person.register('p-1', 'a-1', profile());
+
+    expect(person.id).toBe('p-1');
+
+    expect(person.toSnapshot()).toEqual({
+      id: 'p-1',
+      accountId: 'a-1',
       fullName: 'Maria da Silva',
       birthDate: null,
       phone: null,
       email: null,
+      version: 1,
+    });
+  });
+});
+
+describe('Member', () => {
+  it('deve nascer ACTIVE na versão 1, referenciando somente a Pessoa', () => {
+    expect(Member.enroll('id-1', 'p-1').toSnapshot()).toEqual({
+      id: 'id-1',
+      personId: 'p-1',
       status: 'ACTIVE',
       version: 1,
     });
@@ -85,18 +96,6 @@ describe('Member', () => {
     expect(member.changeStatus(action).ok).toBe(to !== null);
 
     expect(member.status).toBe(to ?? from);
-  });
-
-  it('deve recusar alteração de perfil de membro arquivado', () => {
-    const archived = Member.restore(memberSnapshot({ status: 'ARCHIVED' }));
-
-    expect(archived.updateProfile(profile('Outro Nome')).ok).toBe(false);
-
-    const active = Member.restore(memberSnapshot());
-
-    expect(active.updateProfile(profile('Outro Nome')).ok).toBe(true);
-
-    expect(active.toSnapshot().fullName).toBe('Outro Nome');
   });
 });
 

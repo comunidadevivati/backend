@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ACCOUNT_ID,
   DRAFT_CONGREGATION_ID,
   FixedClock,
   HEADQUARTERS_ID,
+  InMemoryMemberQueries,
   InMemoryMemberRepository,
   InMemoryMembershipRepository,
   MEMBER_ID,
-  memberSnapshot,
+  memberSeed,
+  memberView,
   membershipSnapshot,
   NORTH_ID,
   SequentialIdGenerator,
@@ -15,10 +18,9 @@ import {
 } from '../members.fixtures.js';
 import {
   ChangeMemberStatusUseCase,
+  EnrollMemberUseCase,
   GetMemberUseCase,
   ListMembersUseCase,
-  RegisterMemberUseCase,
-  UpdateMemberUseCase,
 } from './member.use-cases.js';
 import {
   ChangeMembershipStatusUseCase,
@@ -30,6 +32,8 @@ const SECOND_ID = '01a14f8e-a000-7000-8000-000000000002';
 
 const UNKNOWN_ID = '01a14f8e-ffff-7000-8000-000000000000';
 
+const NEW_ACCOUNT_ID = '01a14f8e-e000-7000-8000-0000000000aa';
+
 // Vínculo pendente do membro padrão na congregação informada.
 const inCongregation = (congregationId: string) =>
   membershipSnapshot({
@@ -38,12 +42,14 @@ const inCongregation = (congregationId: string) =>
   });
 
 const setup = (
-  members = [memberSnapshot()],
+  members = [memberSeed()],
   memberships: ReturnType<typeof membershipSnapshot>[] = [],
 ) => {
   const membershipRepository = new InMemoryMembershipRepository(memberships);
 
-  const memberRepository = new InMemoryMemberRepository(members, membershipRepository);
+  const memberRepository = new InMemoryMemberRepository(members);
+
+  const queries = new InMemoryMemberQueries(memberRepository, membershipRepository);
 
   const catalog = new StubCongregationCatalog();
 
@@ -52,11 +58,11 @@ const setup = (
   return {
     memberRepository,
     membershipRepository,
-    list: new ListMembersUseCase(memberRepository),
-    get: new GetMemberUseCase(memberRepository),
-    register: new RegisterMemberUseCase(memberRepository, new SequentialIdGenerator(), clock),
-    update: new UpdateMemberUseCase(memberRepository, clock),
-    changeStatus: new ChangeMemberStatusUseCase(memberRepository, membershipRepository),
+    queries,
+    list: new ListMembersUseCase(queries),
+    get: new GetMemberUseCase(queries),
+    enroll: new EnrollMemberUseCase(memberRepository, queries, new SequentialIdGenerator(), clock),
+    changeStatus: new ChangeMemberStatusUseCase(memberRepository, queries, membershipRepository),
     listMemberships: new ListMembershipsUseCase(memberRepository, membershipRepository, catalog),
     addMembership: new RegisterMembershipUseCase(
       memberRepository,
@@ -73,11 +79,19 @@ const setup = (
   };
 };
 
-describe('ListMembersUseCase', () => {
-  it('deve paginar por cursor repassando os filtros', async () => {
-    const second = memberSnapshot({ id: SECOND_ID, fullName: 'João Souza' });
+const enrollment = (accountId: string, fullName = 'Maria da Silva') => ({
+  accountId,
+  fullName,
+  birthDate: null,
+  phone: null,
+  email: null,
+});
 
-    const { list, memberRepository } = setup([memberSnapshot(), second]);
+describe('ListMembersUseCase', () => {
+  it('deve paginar por cursor repassando os filtros, buscando pelo nome da Pessoa', async () => {
+    const second = memberSeed({ id: SECOND_ID, fullName: 'João Souza' });
+
+    const { list, queries } = setup([memberSeed(), second]);
 
     const first = await list.execute({
       status: null,
@@ -87,9 +101,9 @@ describe('ListMembersUseCase', () => {
       limit: 1,
     });
 
-    expect(first).toEqual({ items: [memberSnapshot()], nextCursor: MEMBER_ID });
+    expect(first).toEqual({ items: [memberView()], nextCursor: MEMBER_ID });
 
-    expect(memberRepository.lastQuery).toEqual({
+    expect(queries.lastQuery).toEqual({
       status: null,
       congregationId: null,
       search: null,
@@ -99,12 +113,12 @@ describe('ListMembersUseCase', () => {
 
     await expect(
       list.execute({ status: null, congregationId: null, search: 'joão', cursor: null, limit: 5 }),
-    ).resolves.toEqual({ items: [second], nextCursor: null });
+    ).resolves.toEqual({ items: [memberView(second)], nextCursor: null });
   });
 
   it('deve filtrar por congregação com vínculo aberto', async () => {
     const { list } = setup(
-      [memberSnapshot(), memberSnapshot({ id: SECOND_ID })],
+      [memberSeed(), memberSeed({ id: SECOND_ID })],
       [membershipSnapshot({ memberId: SECOND_ID, congregationId: NORTH_ID, status: 'ACTIVE' })],
     );
 
@@ -121,10 +135,10 @@ describe('ListMembersUseCase', () => {
 });
 
 describe('GetMemberUseCase', () => {
-  it('deve devolver o membro ou not_found', async () => {
+  it('deve devolver o membro com os dados da Pessoa, ou not_found', async () => {
     const { get } = setup();
 
-    await expect(get.execute(MEMBER_ID)).resolves.toEqual({ ok: true, value: memberSnapshot() });
+    await expect(get.execute(MEMBER_ID)).resolves.toEqual({ ok: true, value: memberView() });
 
     await expect(get.execute(UNKNOWN_ID)).resolves.toEqual({
       ok: false,
@@ -133,13 +147,14 @@ describe('GetMemberUseCase', () => {
   });
 });
 
-describe('RegisterMemberUseCase', () => {
-  it('deve registrar o membro ACTIVE com dados normalizados', async () => {
-    const { memberRepository, register } = setup([]);
+describe('EnrollMemberUseCase', () => {
+  it('deve criar a Pessoa (dados normalizados) e o membro ACTIVE que a referencia', async () => {
+    const { enroll, memberRepository } = setup([]);
 
-    const result = await register.execute({
+    const result = await enroll.execute({
+      accountId: NEW_ACCOUNT_ID,
       fullName: '  José   Pereira ',
-      birthDate: '1985-01-31',
+      birthDate: null,
       phone: '(67) 99255-0858',
       email: ' Jose@Exemplo.COM ',
     });
@@ -147,82 +162,74 @@ describe('RegisterMemberUseCase', () => {
     expect(result).toEqual({
       ok: true,
       value: {
-        id: '01a14f8e-c000-7000-8000-000000000001',
-        fullName: 'José Pereira',
-        birthDate: '1985-01-31',
-        phone: '67992550858',
-        email: 'jose@exemplo.com',
-        status: 'ACTIVE',
-        version: 1,
+        created: true,
+        member: {
+          id: '01a14f8e-c000-7000-8000-000000000002',
+          status: 'ACTIVE',
+          version: 1,
+          person: {
+            id: '01a14f8e-c000-7000-8000-000000000001',
+            fullName: 'José Pereira',
+            birthDate: null,
+            phone: '67992550858',
+            email: 'jose@exemplo.com',
+          },
+        },
       },
+    });
+
+    expect([...memberRepository.people.values()]).toEqual([
+      expect.objectContaining({ accountId: NEW_ACCOUNT_ID, fullName: 'José Pereira' }),
+    ]);
+
+    expect([...memberRepository.stored.values()]).toEqual([
+      expect.objectContaining({ personId: '01a14f8e-c000-7000-8000-000000000001' }),
+    ]);
+  });
+
+  it('deve devolver o mesmo membro quando a conta já foi convertida', async () => {
+    const { enroll, memberRepository } = setup();
+
+    await expect(enroll.execute(enrollment(ACCOUNT_ID, 'Outro Nome'))).resolves.toEqual({
+      ok: true,
+      value: { created: false, member: memberView() },
     });
 
     expect(memberRepository.stored.size).toBe(1);
   });
 
-  it('deve tratar opcionais vazios como ausentes e listar os campos inválidos', async () => {
-    const { register } = setup([]);
+  it('deve devolver o membro do pedido simultâneo que gravou primeiro', async () => {
+    const { enroll, memberRepository } = setup([]);
+
+    const winner = memberSeed({ id: SECOND_ID, accountId: NEW_ACCOUNT_ID });
+
+    memberRepository.raceNextEnroll = winner;
+
+    await expect(enroll.execute(enrollment(NEW_ACCOUNT_ID))).resolves.toEqual({
+      ok: true,
+      value: { created: false, member: memberView(winner) },
+    });
+
+    expect(memberRepository.stored.size).toBe(1);
+  });
+
+  it('deve listar os campos inválidos sem gravar nada', async () => {
+    const { enroll, memberRepository } = setup([]);
 
     await expect(
-      register.execute({ fullName: 'Ana Lima', birthDate: ' ', phone: '', email: null }),
-    ).resolves.toMatchObject({ ok: true, value: { birthDate: null, phone: null, email: null } });
-
-    await expect(
-      register.execute({ fullName: '1', birthDate: '2030-01-01', phone: '123', email: 'x' }),
+      enroll.execute({
+        accountId: NEW_ACCOUNT_ID,
+        fullName: '1',
+        birthDate: '2030-01-01',
+        phone: '123',
+        email: 'x',
+      }),
     ).resolves.toEqual({
       ok: false,
       error: { type: 'invalid_fields', fields: ['fullName', 'birthDate', 'phone', 'email'] },
     });
-  });
-});
 
-describe('UpdateMemberUseCase', () => {
-  it('deve aplicar alteração parcial com controle otimista', async () => {
-    const { update } = setup();
-
-    await expect(
-      update.execute({ id: MEMBER_ID, expectedVersion: 1, patch: { phone: null } }),
-    ).resolves.toEqual({
-      ok: true,
-      value: memberSnapshot({ phone: null, version: 2 }),
-    });
-
-    await expect(
-      update.execute({ id: MEMBER_ID, expectedVersion: 1, patch: { fullName: 'Outra' } }),
-    ).resolves.toEqual({ ok: false, error: { type: 'version_conflict' } });
-  });
-
-  it.each([
-    ['inexistente', setup(), UNKNOWN_ID, {}, { type: 'not_found' }],
-    [
-      'com dados inválidos',
-      setup(),
-      MEMBER_ID,
-      { email: 'invalido' },
-      { type: 'invalid_fields', fields: ['email'] },
-    ],
-    [
-      'arquivado',
-      setup([memberSnapshot({ status: 'ARCHIVED' })]),
-      MEMBER_ID,
-      { fullName: 'Outra Pessoa' },
-      { type: 'member_archived' },
-    ],
-  ])('deve recusar membro %s', async (_caso, { update }, id, patch, error) => {
-    await expect(update.execute({ id, expectedVersion: 1, patch })).resolves.toEqual({
-      ok: false,
-      error,
-    });
-  });
-
-  it('deve informar conflito quando outra escrita vence entre leitura e gravação', async () => {
-    const { memberRepository, update } = setup();
-
-    memberRepository.failNextUpdate = true;
-
-    await expect(
-      update.execute({ id: MEMBER_ID, expectedVersion: 1, patch: { fullName: 'Outra' } }),
-    ).resolves.toEqual({ ok: false, error: { type: 'version_conflict' } });
+    expect(memberRepository.people.size).toBe(0);
   });
 });
 
@@ -238,13 +245,13 @@ describe('ChangeMemberStatusUseCase', () => {
     ] as const) {
       await expect(changeStatus.execute({ id: MEMBER_ID, action })).resolves.toMatchObject({
         ok: true,
-        value: { status },
+        value: { status, person: { fullName: 'Maria da Silva' } },
       });
     }
   });
 
   it('deve exigir o encerramento dos vínculos abertos antes de inativar', async () => {
-    const { changeStatus } = setup([memberSnapshot()], [membershipSnapshot()]);
+    const { changeStatus } = setup([memberSeed()], [membershipSnapshot()]);
 
     await expect(changeStatus.execute({ id: MEMBER_ID, action: 'deactivate' })).resolves.toEqual({
       ok: false,
@@ -304,8 +311,8 @@ describe('Vínculos (Membership)', () => {
 
   it('deve recusar vínculo de membro inexistente ou inativo e de congregação inválida', async () => {
     const { addMembership } = setup([
-      memberSnapshot(),
-      memberSnapshot({ id: SECOND_ID, status: 'INACTIVE' }),
+      memberSeed(),
+      memberSeed({ id: SECOND_ID, status: 'INACTIVE' }),
     ]);
 
     const add = (memberId: string, congregationId: string) =>
@@ -329,7 +336,7 @@ describe('Vínculos (Membership)', () => {
   });
 
   it('deve recusar segundo vínculo aberto na mesma congregação', async () => {
-    const { addMembership } = setup([memberSnapshot()], [membershipSnapshot()]);
+    const { addMembership } = setup([memberSeed()], [membershipSnapshot()]);
 
     await expect(
       addMembership.execute({
@@ -347,7 +354,7 @@ describe('Vínculos (Membership)', () => {
     });
 
     const { changeMembership } = setup(
-      [memberSnapshot()],
+      [memberSeed()],
       [membershipSnapshot({ status: 'ACTIVE', startedOn: '2020-01-01' }), pending],
     );
 
@@ -358,7 +365,7 @@ describe('Vínculos (Membership)', () => {
 
   it('deve exigir membro e congregação ativos somente para ativar', async () => {
     const { changeMembership } = setup(
-      [memberSnapshot({ status: 'INACTIVE' })],
+      [memberSeed({ status: 'INACTIVE' })],
       [inCongregation(HEADQUARTERS_ID), inCongregation(DRAFT_CONGREGATION_ID)],
     );
 
@@ -380,7 +387,7 @@ describe('Vínculos (Membership)', () => {
   it('deve recusar congregação inativa na ativação', async () => {
     const membership = membershipSnapshot({ congregationId: DRAFT_CONGREGATION_ID });
 
-    const { changeMembership } = setup([memberSnapshot()], [membership]);
+    const { changeMembership } = setup([memberSeed()], [membership]);
 
     await expect(
       changeMembership.execute({ id: membership.id, action: 'activate' }),
@@ -390,7 +397,7 @@ describe('Vínculos (Membership)', () => {
   it('deve recusar vínculo inexistente, transição inválida e conflito de versão', async () => {
     const closed = membershipSnapshot({ status: 'INACTIVE', endedOn: TODAY });
 
-    const { changeMembership, membershipRepository } = setup([memberSnapshot()], [closed]);
+    const { changeMembership, membershipRepository } = setup([memberSeed()], [closed]);
 
     await expect(
       changeMembership.execute({ id: UNKNOWN_ID, action: 'deactivate' }),
@@ -412,7 +419,7 @@ describe('Vínculos (Membership)', () => {
   it('deve listar o histórico mesmo sem a congregação no catálogo', async () => {
     const orphan = membershipSnapshot({ congregationId: UNKNOWN_ID });
 
-    const { listMemberships } = setup([memberSnapshot()], [orphan]);
+    const { listMemberships } = setup([memberSeed()], [orphan]);
 
     await expect(listMemberships.execute(MEMBER_ID)).resolves.toEqual({
       ok: true,

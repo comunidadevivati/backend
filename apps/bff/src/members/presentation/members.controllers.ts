@@ -5,7 +5,6 @@ import {
   Header,
   Inject,
   Param,
-  Patch,
   Post,
   Query,
   Req,
@@ -21,6 +20,9 @@ type MemberAction = 'activate' | 'deactivate' | 'archive' | 'restore';
 
 type MembershipAction = 'activate' | 'deactivate';
 
+// Não há cadastro direto de membro: a conta verificada vira Pessoa e membro por
+// POST /api/v1/users/members (UsersController). Os dados pessoais exibidos são os da Pessoa e não
+// são editados pelo membro.
 @Controller('api/v1/members')
 export class MembersController {
   constructor(@Inject(CoreApiForwarder) private readonly forwarder: CoreApiForwarder) {}
@@ -51,37 +53,6 @@ export class MembersController {
       write: false,
       method: 'GET',
       path: resourcePath('members', id),
-    });
-  }
-
-  @Post()
-  @Header('Cache-Control', 'no-store')
-  register(
-    @Body() body: unknown,
-    @Req() request: FastifyRequest,
-    @Res({ passthrough: true }) reply: FastifyReply,
-  ) {
-    return this.forwarder.forward(request, reply, {
-      write: true,
-      method: 'POST',
-      path: 'members',
-      body: body ?? {},
-    });
-  }
-
-  @Patch(':id')
-  @Header('Cache-Control', 'no-store')
-  update(
-    @Param('id') id: string,
-    @Body() body: unknown,
-    @Req() request: FastifyRequest,
-    @Res({ passthrough: true }) reply: FastifyReply,
-  ) {
-    return this.forwarder.forward(request, reply, {
-      write: true,
-      method: 'PATCH',
-      path: resourcePath('members', id),
-      body: body ?? {},
     });
   }
 

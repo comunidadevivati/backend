@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { call } from './support/core-api-test-context.js';
 
@@ -9,6 +10,7 @@ interface Member {
   id: string;
   status: string;
   version: number;
+  person: { id: string; fullName: string };
 }
 
 interface Membership {
@@ -18,8 +20,9 @@ interface Membership {
   endedOn: string | null;
 }
 
+// Conta verificada do BFF (simulada por um UUID novo) convertida em Pessoa e membro.
 const registerMember = async (fullName: string) => {
-  const response = await call('POST', 'members', { fullName });
+  const response = await call('POST', 'members', { accountId: randomUUID(), fullName });
 
   expect(response.statusCode).toBe(201);
 
@@ -57,34 +60,47 @@ describe('Members (PostgreSQL real)', () => {
     }
   });
 
-  it('deve registrar, consultar, alterar e filtrar membros por nome e situação', async () => {
-    const created = await call('POST', 'members', {
+  it('deve converter a conta em Pessoa e membro uma única vez e filtrar pelo nome', async () => {
+    const accountId = randomUUID();
+
+    const enrollment = {
+      accountId,
       fullName: '  Maria   da Silva ',
-      birthDate: '1990-05-20',
       phone: '(67) 99255-0858',
       email: 'Maria@Exemplo.com',
-    });
+    };
+
+    const created = await call('POST', 'members', enrollment);
 
     expect(created.statusCode).toBe(201);
 
     const member = created.json<Member>();
 
     expect(member).toMatchObject({
-      fullName: 'Maria da Silva',
-      birthDate: '1990-05-20',
-      phone: '67992550858',
-      email: 'maria@exemplo.com',
       status: 'ACTIVE',
       version: 1,
+      person: {
+        fullName: 'Maria da Silva',
+        birthDate: null,
+        phone: '67992550858',
+        email: 'maria@exemplo.com',
+      },
     });
 
-    const updated = await call('PATCH', `members/${member.id}`, { version: 1, email: null });
+    // Repetir (ou pedidos simultâneos) para a mesma conta devolve o mesmo membro.
+    const [again, concurrent] = await Promise.all([
+      call('POST', 'members', enrollment),
+      call('POST', 'members', { ...enrollment, fullName: 'Outro Nome' }),
+    ]);
 
-    expect(updated.json()).toMatchObject({ email: null, version: 2 });
+    expect([again.statusCode, concurrent.statusCode]).toEqual([200, 200]);
 
-    const stale = await call('PATCH', `members/${member.id}`, { version: 1, fullName: 'Outra' });
+    expect(concurrent.json()).toEqual(member);
 
-    expect(stale.statusCode).toBe(409);
+    expect((await call('GET', `members/${member.id}`)).json()).toEqual(member);
+
+    // Não há edição de dados pessoais pelo membro: eles pertencem à Pessoa.
+    expect((await call('PATCH', `members/${member.id}`, { version: 1 })).statusCode).toBe(404);
 
     // Curingas digitados não funcionam como curinga do ILIKE.
     const wildcard = await call('GET', 'members?search=%25');
@@ -95,11 +111,17 @@ describe('Members (PostgreSQL real)', () => {
 
     expect(found.json<{ items: Member[] }>().items.map(({ id }) => id)).toContain(member.id);
 
-    const invalid = await call('POST', 'members', { fullName: 'X', birthDate: '2999-01-01' });
+    const invalid = await call('POST', 'members', {
+      accountId: randomUUID(),
+      fullName: 'X',
+      birthDate: '2999-01-01',
+    });
 
     expect(invalid.statusCode).toBe(400);
 
     expect(invalid.json()).toMatchObject({ fields: ['fullName', 'birthDate'] });
+
+    expect((await call('POST', 'members', { fullName: 'Sem Conta' })).statusCode).toBe(400);
   });
 
   it('deve paginar membros por cursor', async () => {
@@ -209,12 +231,12 @@ describe('Members (PostgreSQL real)', () => {
       expect(changed.statusCode).toBe(200);
     }
 
-    const archivedEdit = await call('PATCH', `members/${member.id}`, {
-      version: 3,
-      fullName: 'Outro Nome',
-    });
+    const archived = await call('GET', `members/${member.id}`);
 
-    expect(archivedEdit.statusCode).toBe(409);
+    expect(archived.json()).toMatchObject({
+      status: 'ARCHIVED',
+      person: { fullName: 'João Vinculado' },
+    });
   });
 
   it('deve recusar vínculo com congregação inexistente ou não ativa', async () => {

@@ -1,6 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { UsersController } from './users.controller.js';
+import type { CreateMembersFromUsersUseCase } from '../application/create-members-from-users.use-case.js';
 import type { UserManagementUseCases } from '../application/user-management.use-cases.js';
 import type { SessionCookieService } from './session-cookie.service.js';
 import type { FastifyRequest } from 'fastify';
@@ -8,6 +9,8 @@ import type { FastifyRequest } from 'fastify';
 const ID = '01a14f8e-a000-7000-8000-000000000001';
 
 const OPERATOR_ID = '01a14f8e-a000-7000-8000-000000000099';
+
+const PERSON_ID = '01a14f8e-a000-7000-8000-000000000050';
 
 const account = { id: ID, status: 'ACTIVE' };
 
@@ -28,6 +31,10 @@ const createFixture = ({ emailVerified = true } = {}) => {
     delete: vi.fn(() => Promise.resolve('deleted')),
   };
 
+  const createMembersFromUsers = {
+    execute: vi.fn(() => Promise.resolve([{ userId: ID, status: 'linked', personId: PERSON_ID }])),
+  };
+
   const assertCsrfToken = vi.fn();
 
   const sessionCookies = {
@@ -39,8 +46,10 @@ const createFixture = ({ emailVerified = true } = {}) => {
 
   return {
     assertCsrfToken,
+    createMembersFromUsers,
     controller: new UsersController(
       users as unknown as UserManagementUseCases,
+      createMembersFromUsers as unknown as CreateMembersFromUsersUseCase,
       sessionCookies as unknown as SessionCookieService,
     ),
     request: {} as FastifyRequest,
@@ -67,10 +76,17 @@ describe('UsersController', () => {
     expect(users.list).toHaveBeenCalledWith({
       status: null,
       emailVerified: null,
+      hasPerson: null,
       search: null,
       cursor: null,
       limit: 20,
     });
+
+    await controller.list({ emailVerified: 'true', hasPerson: 'false' }, request);
+
+    expect(users.list).toHaveBeenLastCalledWith(
+      expect.objectContaining({ emailVerified: true, hasPerson: false }),
+    );
 
     await controller.list({ status: 'ACTIVE', emailVerified: 'false' }, request);
 
@@ -99,6 +115,34 @@ describe('UsersController', () => {
     await expect(
       errorOf(controller.create({ ...validUser, password: 'fraca' }, request)),
     ).resolves.toMatchObject({ status: 400, response: { fields: ['password'] } });
+  });
+
+  it('deve converter contas em membros, exigindo CSRF e de 1 a 50 IDs no formato UUID', async () => {
+    const { assertCsrfToken, controller, createMembersFromUsers, request } = createFixture();
+
+    await expect(controller.createMembers({ userIds: [ID] }, request)).resolves.toEqual({
+      items: [{ userId: ID, status: 'linked', personId: PERSON_ID }],
+    });
+
+    expect(createMembersFromUsers.execute).toHaveBeenCalledWith([ID]);
+
+    expect(assertCsrfToken).toHaveBeenCalledTimes(1);
+
+    const invalidBodies = [
+      undefined,
+      { userIds: [] },
+      { userIds: ['x'] },
+      { userIds: Array.from({ length: 51 }, () => ID) },
+      { userIds: [ID], extra: true },
+    ];
+
+    const errors = await Promise.all(
+      invalidBodies.map((body) => errorOf(controller.createMembers(body, request))),
+    );
+
+    expect(errors.map(({ status }) => status)).toEqual(invalidBodies.map(() => 400));
+
+    expect(createMembersFromUsers.execute).toHaveBeenCalledTimes(1);
   });
 
   it('deve alterar, suspender, reativar e excluir repassando quem opera', async () => {
