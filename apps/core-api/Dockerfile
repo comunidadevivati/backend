@@ -23,11 +23,17 @@ FROM node:24-bookworm-slim AS runtime
 
 ENV NODE_ENV=production
 ENV PORT=10000
-# Recomendação do sharp para glibc: menos arenas do malloc evitam a fragmentação que, no
-# processamento das fotos da galeria, levava o processo além dos 512 MB da instância free.
-ENV MALLOC_ARENA_MAX=2
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
+
+# jemalloc no lugar do malloc da glibc (recomendação do sharp): devolve a memória após cada foto
+# processada. Com o malloc padrão, a fragmentação se acumulava a cada foto e levava o processo além
+# dos 512 MB da instância free. O link deixa o caminho igual em qualquer arquitetura.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends libjemalloc2 \
+  && rm -rf /var/lib/apt/lists/* \
+  && ln -s "/usr/lib/$(uname -m)-linux-gnu/libjemalloc.so.2" /usr/local/lib/libjemalloc.so.2
+ENV LD_PRELOAD=/usr/local/lib/libjemalloc.so.2
 
 RUN corepack enable
 
