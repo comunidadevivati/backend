@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.7.0](https://github.com/comunidadevivati/backend/compare/backend-v0.6.0...backend-v0.7.0) (2026-10-21)
+
+
+### ✨ Funcionalidades
+
+* **gallery:** ✨ adiciona publicação de fotos e álbuns e a galeria do site público ([1f99fc9](https://github.com/comunidadevivati/backend/commit/1f99fc9323e594f45121480ecd91eaa8059e8973))
+* **gallery:** ✨ publicação de fotos e álbuns e galeria do site público ([b372b76](https://github.com/comunidadevivati/backend/commit/b372b76f8a679e5ccb3b5ce460460240850dd4c6))
+* **release:** ✨ promove a publicação da galeria e o site de fotos para produção ([5a64a77](https://github.com/comunidadevivati/backend/commit/5a64a77ffef257e4f0adb5b339b53375e4a2e725))
+
+
+### 🐛 Correções
+
+* **gallery:** 🐛 evita que o processamento de fotos estoure a memória da Core API ([e68ed35](https://github.com/comunidadevivati/backend/commit/e68ed3598dfb9d519a3c802a1beac2bcbf88ae6d))
+
+
+### ♻️ Refatorações
+
+* **gallery:** ♻️ deixa interno o tipo de variante da galeria pública ([8fe2a6d](https://github.com/comunidadevivati/backend/commit/8fe2a6d2bc1e4eda2c9239b7d6c60f0305c58d47))
+
+
+### 👷 Integração contínua
+
+* **tests:** 👷 pausa a execução de testes no CI e nos hooks ([380b34d](https://github.com/comunidadevivati/backend/commit/380b34d5a43f6e4b58b0df6361ef7cadecb8ed86))
+* **tests:** 👷 pausa a execução de testes no CI e nos hooks ([cdc47e2](https://github.com/comunidadevivati/backend/commit/cdc47e2bcd49f96e4524cd5213a2d18e3d8fc674))
+
 ## [0.6.0](https://github.com/comunidadevivati/backend/compare/backend-v0.5.0...backend-v0.6.0) (2026-10-20)
 
 
