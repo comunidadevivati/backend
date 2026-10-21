@@ -108,10 +108,12 @@ resposta no Render Free sem antecipar a escolha da fila de mensagens (pendente d
 - O processamento compete por CPU com as requisições da Core API; envios grandes ficam lentos no
   plano gratuito (estimativa: 15 a 20 s por foto). A fila em processo se perde se a instância
   hibernar no meio, mas as fotos são retomadas ao reiniciar.
-- Memória: com 512 MB, as variantes são codificadas um formato por vez e a imagem da Core API usa
-  `MALLOC_ARENA_MAX=2` (recomendação do `sharp` para glibc). Sem isso, uma única foto passava do
-  limite, o Render encerrava o processo e a retomada da mesma foto o derrubava de novo. Medido com
-  0,1 CPU e 512 MB: pico de ~335 MB numa foto de 54 MP.
+- Memória: com 512 MB, as variantes são codificadas um formato por vez e a imagem da Core API usa o
+  alocador jemalloc (recomendação do `sharp`). Com o malloc da glibc, a fragmentação acumulava a
+  cada foto processada até o Render encerrar o processo por falta de memória, e a retomada da foto
+  pendente o derrubava de novo. Medido com 0,1 CPU e 512 MB, fotos processadas em sequência: 6 de
+  24 MP com pico de ~294 MB e ~135 MB ao final; 3 de 54 MP com pico de ~393 MB e ~152 MB ao final
+  (com glibc e `MALLOC_ARENA_MAX=2`, ~319 MB ao final, crescendo a cada foto).
 - A cota de 10 GB comporta da ordem de 3.000 a 5.000 fotos (original reduzido + variantes).
 - O vínculo de quem enviou ou publicou não é registrado ainda: a propagação da identidade do BFF
   para a Core API continua pendente. Qualquer conta verificada administra a galeria até o contexto
