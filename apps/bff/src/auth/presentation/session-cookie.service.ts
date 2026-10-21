@@ -10,7 +10,7 @@ import {
 import type { LoginResult } from '../application/login.use-case.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
-export interface AuthenticatedUser {
+interface AuthenticatedUser {
   authenticated: true;
   csrfToken: string;
   user: {
