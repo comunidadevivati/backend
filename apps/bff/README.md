@@ -102,9 +102,12 @@ O navegador não armazena tokens em localStorage ou sessionStorage.
 - `POST /auth/email-verification/resend`: exige a sessão e o header `X-CSRF-Token`. Envia um novo
   link para o e-mail da sessão e invalida os anteriores; `409` se o e-mail já foi verificado, `429`
   durante o intervalo mínimo entre envios (60 segundos) e `503` se o provedor de e-mail falhar.
-- `GET /auth/me`: `{ authenticated, csrfToken, user: { subject, email, name, emailVerified } }`
-  (o mesmo `user` de login, cadastro e redefinição de senha). O token CSRF
-  deve permanecer apenas em memória no frontend. Renova a expiração por inatividade.
+- `GET /auth/me`:
+  `{ authenticated, csrfToken, user: { subject, email, name, emailVerified, isMember } }`
+  (o `user` de login, cadastro e redefinição de senha, acrescido de `isMember`). `isMember` indica
+  conta vinculada a uma Pessoa, o que só ocorre ao virar membro (ADR 0009); o painel só libera os
+  menus além do Dashboard para membros. O token CSRF deve permanecer apenas em memória no frontend.
+  Renova a expiração por inatividade.
 - `POST /auth/logout`: exige o header `X-CSRF-Token`, revoga a sessão no banco e remove o cookie.
   Responde `200` com `{ "authenticated": false, "message": "O logout foi efetuado com sucesso." }`.
 

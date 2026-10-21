@@ -19,7 +19,7 @@ import { SessionService } from '../infrastructure/session/session.service.js';
 import { registerRequestSchema } from './register-request.schema.js';
 import {
   SessionCookieService,
-  type AuthenticatedUser,
+  type CurrentSession,
   type StartedSession,
 } from './session-cookie.service.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -112,7 +112,7 @@ export class AuthController {
 
   @Get('me')
   @Header('Cache-Control', 'no-store')
-  async me(@Req() request: FastifyRequest): Promise<AuthenticatedUser> {
+  async me(@Req() request: FastifyRequest): Promise<CurrentSession> {
     const { session } = await this.sessionCookies.requireSession(request);
 
     return {
@@ -123,6 +123,7 @@ export class AuthController {
         email: session.email,
         name: session.name,
         emailVerified: session.emailVerified,
+        isMember: session.isMember,
       },
     };
   }

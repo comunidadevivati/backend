@@ -21,6 +21,11 @@ export interface AuthenticatedUser {
   };
 }
 
+// Resposta de GET /auth/me: acrescenta se a conta é de um membro, o que libera os menus do painel.
+export interface CurrentSession extends AuthenticatedUser {
+  user: AuthenticatedUser['user'] & { isMember: boolean };
+}
+
 // Resposta das operações que abrem sessão: a sessão pública acrescida da mensagem da operação.
 export interface StartedSession extends AuthenticatedUser {
   message: string;
