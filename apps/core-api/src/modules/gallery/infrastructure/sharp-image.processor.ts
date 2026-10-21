@@ -48,14 +48,16 @@ export class SharpImageProcessor extends ImageProcessor {
 
       const variants: ImageVariant[] = [];
 
+      // Um formato por vez: AVIF e WebP em paralelo passavam de 512 MB na instância free e o
+      // processo era encerrado por falta de memória.
       for (const width of variantWidthsFor(info.width)) {
         const resized = sharp(original).resize({ width, withoutEnlargement: true });
 
         // oxlint-disable-next-line no-await-in-loop -- codificação sequencial, sem picos de memória
-        const [avif, webp] = await Promise.all([
-          resized.clone().avif({ quality: 50, effort: 2 }).toBuffer(),
-          resized.clone().webp({ quality: 75 }).toBuffer(),
-        ]);
+        const avif = await resized.clone().avif({ quality: 50, effort: 2 }).toBuffer();
+
+        // oxlint-disable-next-line no-await-in-loop -- codificação sequencial, sem picos de memória
+        const webp = await resized.clone().webp({ quality: 75 }).toBuffer();
 
         variants.push(
           { width, format: 'avif', body: toBytes(avif) },

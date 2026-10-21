@@ -5,6 +5,10 @@ import {
   DeletePhotoUseCase,
   type PhotoView,
 } from '../application/photo.use-cases.js';
+import {
+  PublishPhotoUseCase,
+  UnpublishPhotoUseCase,
+} from '../application/publication.use-cases.js';
 import { parseId, unwrap } from './gallery-problem.js';
 
 // Fotos são listadas e enviadas a partir do álbum (/gallery/albums/:id); aqui ficam as operações
@@ -17,6 +21,10 @@ export class PhotosController {
     private readonly completeUpload: CompleteUploadUseCase,
     @Inject(DeletePhotoUseCase)
     private readonly deletePhoto: DeletePhotoUseCase,
+    @Inject(PublishPhotoUseCase)
+    private readonly publishPhoto: PublishPhotoUseCase,
+    @Inject(UnpublishPhotoUseCase)
+    private readonly unpublishPhoto: UnpublishPhotoUseCase,
   ) {}
 
   // O PUT direto ao bucket terminou: a foto entra na fila de processamento (202, assíncrono).
@@ -26,7 +34,21 @@ export class PhotosController {
     return unwrap(await this.completeUpload.execute(parseId(id)));
   }
 
-  // Exclusão definitiva: objetos privados e metadados.
+  // Copia as variantes para a área pública do bucket (somente fotos prontas).
+  @Post(':id/publish')
+  @HttpCode(200)
+  async publish(@Param('id') id: string): Promise<PhotoView> {
+    return unwrap(await this.publishPhoto.execute(parseId(id)));
+  }
+
+  // Apaga as variantes públicas e as tira do cache da CDN; a foto continua no painel.
+  @Post(':id/unpublish')
+  @HttpCode(200)
+  async unpublish(@Param('id') id: string): Promise<PhotoView> {
+    return unwrap(await this.unpublishPhoto.execute(parseId(id)));
+  }
+
+  // Exclusão definitiva: objetos públicos e privados e metadados.
   @Delete(':id')
   @HttpCode(204)
   async delete(@Param('id') id: string): Promise<void> {

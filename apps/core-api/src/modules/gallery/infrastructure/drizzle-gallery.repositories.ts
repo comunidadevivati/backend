@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, gt, lt, ne, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, gt, isNotNull, isNull, lt, ne, sql, type SQL } from 'drizzle-orm';
 import { isUniqueViolation } from '../../../shared/infrastructure/database/database-errors.js';
 import { DatabaseService } from '../../../shared/infrastructure/database/database.service.js';
 import {
@@ -50,6 +50,10 @@ const albumViewColumns = {
     select count(*)::int from gallery.photos p
     where p.album_id = "albums"."id" and p.status = 'READY'
   )`,
+  publishedPhotoCount: sql<number>`(
+    select count(*)::int from gallery.photos p
+    where p.album_id = "albums"."id" and p.publication_key is not null
+  )`,
 };
 
 const toPhotoSnapshot = (row: PhotoRow): PhotoSnapshot => ({
@@ -63,8 +67,16 @@ const toPhotoSnapshot = (row: PhotoRow): PhotoSnapshot => ({
   placeholder: row.placeholder,
   variantWidths: row.variantWidths,
   failure: row.failure,
+  publicationKey: row.publicationKey,
+  publishedAt: row.publishedAt?.toISOString() ?? null,
   version: row.version,
 });
+
+const toDate = (value: string | null): Date | null => (value === null ? null : new Date(value));
+
+// Pronta e ainda não publicada.
+const publishable = (albumId: string): SQL | undefined =>
+  and(eq(photos.albumId, albumId), eq(photos.status, 'READY'), isNull(photos.publicationKey));
 
 @Injectable()
 export class DrizzleAlbumRepository extends AlbumRepository {
@@ -140,12 +152,20 @@ export class DrizzleAlbumRepository extends AlbumRepository {
   }
 
   async update(album: Album): Promise<number | null> {
-    const { coverPhotoId, description, id, occurredOn, status, title, version } =
+    const { coverPhotoId, description, id, occurredOn, publishedAt, status, title, version } =
       album.toSnapshot();
 
     const [row] = await this.db
       .update(albums)
-      .set({ title, description, occurredOn, coverPhotoId, status, ...nextVersion })
+      .set({
+        title,
+        description,
+        occurredOn,
+        coverPhotoId,
+        status,
+        publishedAt: toDate(publishedAt),
+        ...nextVersion,
+      })
       .where(and(eq(albums.id, id), eq(albums.version, version)))
       .returning({ version: albums.version });
 
@@ -219,13 +239,66 @@ export class DrizzlePhotoRepository extends PhotoRepository {
     );
   }
 
+  async listPublishable(albumId: string, limit: number): Promise<Photo[]> {
+    const rows = await this.db
+      .select()
+      .from(photos)
+      .where(publishable(albumId))
+      .orderBy(asc(photos.id))
+      .limit(limit);
+
+    return rows.map((row) => Photo.restore(toPhotoSnapshot(row)));
+  }
+
+  async countPublishable(albumId: string): Promise<number> {
+    const [row] = await this.db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(photos)
+      .where(publishable(albumId));
+
+    return row?.total ?? 0;
+  }
+
+  async findFirstPublishedId(albumId: string): Promise<string | null> {
+    const [row] = await this.db
+      .select({ id: photos.id })
+      .from(photos)
+      .where(and(eq(photos.albumId, albumId), isNotNull(photos.publicationKey)))
+      .orderBy(asc(photos.id))
+      .limit(1);
+
+    return row?.id ?? null;
+  }
+
   async update(photo: Photo): Promise<number | null> {
-    const { byteSize, failure, height, id, placeholder, status, variantWidths, version, width } =
-      photo.toSnapshot();
+    const {
+      byteSize,
+      failure,
+      height,
+      id,
+      placeholder,
+      publicationKey,
+      publishedAt,
+      status,
+      variantWidths,
+      version,
+      width,
+    } = photo.toSnapshot();
 
     const [row] = await this.db
       .update(photos)
-      .set({ status, byteSize, width, height, placeholder, variantWidths, failure, ...nextVersion })
+      .set({
+        status,
+        byteSize,
+        width,
+        height,
+        placeholder,
+        variantWidths,
+        failure,
+        publicationKey,
+        publishedAt: toDate(publishedAt),
+        ...nextVersion,
+      })
       .where(and(eq(photos.id, id), eq(photos.version, version)))
       .returning({ version: photos.version });
 

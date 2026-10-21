@@ -59,6 +59,9 @@ export const photos = gallerySchema.table(
     placeholder: text('placeholder'),
     variantWidths: integer('variant_widths').array().notNull().default([]),
     failure: photoFailure('failure'),
+    // Pasta da publicação atual na área pública do bucket; null quando a foto não está publicada.
+    publicationKey: text('publication_key'),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
     ...auditColumns,
   },
   (table) => [

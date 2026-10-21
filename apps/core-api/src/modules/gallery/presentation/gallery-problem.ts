@@ -26,6 +26,9 @@ const CONFLICTS: Record<Conflict, string> = {
   upload_missing: 'O arquivo não chegou ao armazenamento. Envie a foto novamente.',
   upload_too_large: 'O arquivo enviado passa de 25 MB e foi descartado.',
   invalid_photo_status: 'A situação atual da foto não permite esta operação.',
+  invalid_album_status: 'A situação atual do álbum não permite esta operação.',
+  album_without_published_photos: 'Publique ao menos uma foto antes de publicar o álbum.',
+  cover_not_published: 'A capa precisa ser uma foto publicada.',
 };
 
 const toProblem = (error: GalleryError): ProblemException => {

@@ -70,6 +70,22 @@ hibernação), sem worker contínuo aprovado e cota gratuita do R2 de 10 GB.
 - Exclusão definitiva apaga objetos públicos (com purge) e privados, e depois os metadados.
 - Álbum: `DRAFT`, `PUBLISHED`, `ARCHIVED`. Só aparece no site se estiver `PUBLISHED` e tiver ao
   menos uma foto publicada; a capa precisa ser uma foto publicada.
+- Regras implementadas no painel: publicar o álbum exige ao menos uma foto publicada e, sem capa
+  definida, assume a primeira; despublicar o álbum (volta a `DRAFT`) mantém as fotos publicadas;
+  arquivar exige `DRAFT` e restaurar volta a `DRAFT`; álbum arquivado não publica fotos, mas ainda
+  permite despublicá-las. Quando a capa é despublicada ou excluída, passa para a próxima foto
+  publicada. "Publicar todas" publica lotes de 10 fotos por chamada, dentro do tempo limite do BFF.
+- A cópia para a área pública é feita no próprio bucket (`CopyObject`), com
+  `Cache-Control: public, max-age=31536000, immutable`. O purge da CDN usa `MEDIA_PUBLIC_BASE_URL`,
+  `MEDIA_CDN_ZONE_ID` e `MEDIA_CDN_PURGE_TOKEN` (as três juntas); sem elas, não há purge, o que só
+  é aceitável enquanto o domínio público não estiver ligado. Falha no purge não desfaz a
+  despublicação: fica registrada no log para purge manual.
+- Site público: o BFF expõe, sem sessão, `GET /api/v1/public/gallery/albums`, `/albums/{slug}` e
+  `/albums/{slug}/photos` (paginação por cursor, `Cache-Control: public, max-age=60`), repassados à
+  Core API (`gallery/public/albums`), que devolve somente álbuns `PUBLISHED` com foto publicada e
+  somente fotos publicadas, sem dados de controle (versão, chave de publicação). As URLs das
+  variantes usam `MEDIA_PUBLIC_BASE_URL`; sem ele (desenvolvimento e homologação antes do domínio),
+  são URLs assinadas de 1 h, que funcionam mas não aproveitam o cache da CDN.
 
 ### Ambientes
 
@@ -92,6 +108,10 @@ resposta no Render Free sem antecipar a escolha da fila de mensagens (pendente d
 - O processamento compete por CPU com as requisições da Core API; envios grandes ficam lentos no
   plano gratuito (estimativa: 15 a 20 s por foto). A fila em processo se perde se a instância
   hibernar no meio, mas as fotos são retomadas ao reiniciar.
+- Memória: com 512 MB, as variantes são codificadas um formato por vez e a imagem da Core API usa
+  `MALLOC_ARENA_MAX=2` (recomendação do `sharp` para glibc). Sem isso, uma única foto passava do
+  limite, o Render encerrava o processo e a retomada da mesma foto o derrubava de novo. Medido com
+  0,1 CPU e 512 MB: pico de ~335 MB numa foto de 54 MP.
 - A cota de 10 GB comporta da ordem de 3.000 a 5.000 fotos (original reduzido + variantes).
 - O vínculo de quem enviou ou publicou não é registrado ainda: a propagação da identidade do BFF
   para a Core API continua pendente. Qualquer conta verificada administra a galeria até o contexto

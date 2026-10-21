@@ -7,6 +7,7 @@ import {
   InMemoryPhotoRepository,
   NOW,
   PHOTO_ID,
+  RecordingPublicMediaCache,
   RecordingQueue,
   SequentialIdGenerator,
   StubImageProcessor,
@@ -30,6 +31,7 @@ import {
   RequestUploadsUseCase,
   ResumeProcessingUseCase,
 } from './photo.use-cases.js';
+import { PublicPhotoRemoval } from './public-photos.js';
 import type { AlbumSnapshot } from '../domain/album.js';
 import type { PhotoSnapshot } from '../domain/photo.js';
 
@@ -79,7 +81,16 @@ const setup = (
     processPhoto: new ProcessPhotoUseCase(photoRepository, storage, processor),
     resume: new ResumeProcessingUseCase(photoRepository, queue),
     listPhotos: new ListPhotosUseCase(albumRepository, photoRepository, views),
-    deletePhoto: new DeletePhotoUseCase(photoRepository, storage),
+    deletePhoto: new DeletePhotoUseCase(
+      photoRepository,
+      storage,
+      new PublicPhotoRemoval(
+        albumRepository,
+        photoRepository,
+        storage,
+        new RecordingPublicMediaCache(),
+      ),
+    ),
   };
 };
 
