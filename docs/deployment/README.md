@@ -257,7 +257,11 @@ Sem elas a publicação funciona, mas fotos despublicadas não saem do cache da 
 
 ## 10. Limites conhecidos
 
-- Serviços Render Free dormem após inatividade e podem demorar para responder no primeiro acesso.
+- Serviços Render Free dormem após cerca de 15 minutos sem uso e levam de 30 a 60 segundos para
+  voltar. Para o primeiro acesso esperar em vez de falhar: o BFF espera a Core API por até 60 s
+  (`CORE_API_TIMEOUT_MS`) e a acorda assim que ele mesmo sobe, e o frontend espera até 70 s e avisa
+  "Conectando ao servidor…". Manter os serviços acordados com pings externos não é viável no free:
+  a franquia de 750 horas por mês do workspace só cobre um serviço ligado o mês inteiro.
 - A franquia de horas é compartilhada pelos serviços gratuitos do workspace.
 - O plano gratuito não oferece SLA adequado à produção.
 - Atingir cotas pode suspender serviços ou bloquear comandos até o próximo ciclo.

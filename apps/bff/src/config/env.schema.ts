@@ -35,8 +35,9 @@ const envSchema = z
 
     CORE_API_TOKEN: z.string().min(32),
 
-    // Folga para o cold start da Core API no Render Free, que pode levar dezenas de segundos.
-    CORE_API_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60_000).default(30_000),
+    // Folga para o cold start da Core API no Render Free, que leva de 30 a 60 s: com menos, o
+    // primeiro acesso depois do repouso respondia 503.
+    CORE_API_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60_000).default(60_000),
   })
   .superRefine((config, context) => {
     if (config.EMAIL_PROVIDER !== 'resend') {
