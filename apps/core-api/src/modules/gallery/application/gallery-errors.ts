@@ -7,6 +7,9 @@ export type GalleryError =
   | { type: 'upload_missing' }
   | { type: 'upload_too_large' }
   | { type: 'invalid_photo_status' }
+  | { type: 'invalid_album_status' }
+  | { type: 'album_without_published_photos' }
+  | { type: 'cover_not_published' }
   | { type: 'storage_disabled' };
 
 export const notFound = { type: 'not_found' } as const;
@@ -22,6 +25,12 @@ export const uploadMissing = { type: 'upload_missing' } as const;
 export const uploadTooLarge = { type: 'upload_too_large' } as const;
 
 export const invalidPhotoStatus = { type: 'invalid_photo_status' } as const;
+
+export const invalidAlbumStatus = { type: 'invalid_album_status' } as const;
+
+export const albumWithoutPublishedPhotos = { type: 'album_without_published_photos' } as const;
+
+export const coverNotPublished = { type: 'cover_not_published' } as const;
 
 export const storageDisabled = { type: 'storage_disabled' } as const;
 

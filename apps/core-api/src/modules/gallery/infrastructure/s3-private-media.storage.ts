@@ -39,6 +39,9 @@ export class S3PrivateMediaStorage extends PrivateMediaStorage {
 
   private readonly baseUrl: string;
 
+  // Origem de uma cópia (CopyObject): /{bucket}/{pasta do ambiente}.
+  private readonly copySourcePrefix: string;
+
   constructor({
     accessKeyId,
     bucket,
@@ -57,7 +60,9 @@ export class S3PrivateMediaStorage extends PrivateMediaStorage {
       retries: 2,
     });
 
-    this.baseUrl = `${endpoint.replace(/\/+$/u, '')}/${bucket}/${encodeURIComponent(keyPrefix)}`;
+    this.copySourcePrefix = `/${bucket}/${encodeURIComponent(keyPrefix)}`;
+
+    this.baseUrl = `${endpoint.replace(/\/+$/u, '')}${this.copySourcePrefix}`;
   }
 
   presignUpload(key: string, contentType: string, expiresInSeconds: number): Promise<string> {
@@ -99,6 +104,27 @@ export class S3PrivateMediaStorage extends PrivateMediaStorage {
     });
 
     this.assertOk('PUT', response);
+
+    await response.body?.cancel();
+  }
+
+  // CopyObject com metadados novos (REPLACE): o destino recebe o próprio Content-Type e
+  // Cache-Control, e o conteúdo não passa pela Core API.
+  async copy(
+    sourceKey: string,
+    targetKey: string,
+    { cacheControl, contentType }: { contentType: string; cacheControl: string },
+  ): Promise<void> {
+    const response = await this.send('PUT', targetKey, {
+      headers: {
+        'x-amz-copy-source': `${this.copySourcePrefix}/${encodeKey(sourceKey)}`,
+        'x-amz-metadata-directive': 'REPLACE',
+        'content-type': contentType,
+        'cache-control': cacheControl,
+      },
+    });
+
+    this.assertOk('COPY', response);
 
     await response.body?.cancel();
   }
@@ -178,6 +204,10 @@ export class DisabledPrivateMediaStorage extends PrivateMediaStorage {
   }
 
   write(): Promise<void> {
+    return this.unavailable();
+  }
+
+  copy(): Promise<void> {
     return this.unavailable();
   }
 

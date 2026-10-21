@@ -31,8 +31,10 @@ const detailsToState = ({ description, occurredOn, title }: AlbumDetails) => ({
   occurredOn: occurredOn.value,
 });
 
-// Álbum de fotos de um culto ou evento. Nasce DRAFT (fora do site público); a publicação e o
-// arquivamento vêm na etapa de publicação (ADR 0010). Arquivado é somente leitura.
+export type AlbumTransitionError = 'album_archived' | 'invalid_album_status';
+
+// Álbum de fotos de um culto ou evento (ADR 0010): DRAFT (fora do site) ⇄ PUBLISHED, e DRAFT ⇄
+// ARCHIVED. Arquivado é somente leitura; para arquivar um álbum publicado, despublique-o antes.
 export class Album {
   private constructor(private state: AlbumSnapshot) {}
 
@@ -61,6 +63,14 @@ export class Album {
     return this.state.version;
   }
 
+  get status(): AlbumStatus {
+    return this.state.status;
+  }
+
+  get coverPhotoId(): string | null {
+    return this.state.coverPhotoId;
+  }
+
   get acceptsPhotos(): boolean {
     return this.state.status !== 'ARCHIVED';
   }
@@ -74,6 +84,76 @@ export class Album {
     this.state = { ...this.state, ...detailsToState(details) };
 
     return ok();
+  }
+
+  // A existência de foto publicada é conferida pela Application. Sem capa definida, assume a
+  // primeira foto publicada.
+  publish(publishedAt: string, firstPublishedPhotoId: string): Result<void, AlbumTransitionError> {
+    if (this.state.status !== 'DRAFT') {
+      return err(this.state.status === 'ARCHIVED' ? 'album_archived' : 'invalid_album_status');
+    }
+
+    this.state = {
+      ...this.state,
+      status: 'PUBLISHED',
+      publishedAt,
+      coverPhotoId: this.state.coverPhotoId ?? firstPublishedPhotoId,
+    };
+
+    return ok();
+  }
+
+  // Volta a rascunho: sai do site, mas as fotos continuam publicadas.
+  unpublish(): Result<void, AlbumTransitionError> {
+    if (this.state.status !== 'PUBLISHED') {
+      return err(this.state.status === 'ARCHIVED' ? 'album_archived' : 'invalid_album_status');
+    }
+
+    this.state = { ...this.state, status: 'DRAFT', publishedAt: null };
+
+    return ok();
+  }
+
+  archive(): Result<void, AlbumTransitionError> {
+    if (this.state.status !== 'DRAFT') {
+      return err(this.state.status === 'ARCHIVED' ? 'album_archived' : 'invalid_album_status');
+    }
+
+    this.state = { ...this.state, status: 'ARCHIVED' };
+
+    return ok();
+  }
+
+  restore(): Result<void, AlbumTransitionError> {
+    if (this.state.status !== 'ARCHIVED') {
+      return err('invalid_album_status');
+    }
+
+    this.state = { ...this.state, status: 'DRAFT' };
+
+    return ok();
+  }
+
+  // A foto precisa ser uma foto publicada do próprio álbum (conferido pela Application).
+  setCover(photoId: string): Result<void, 'album_archived'> {
+    if (this.state.status === 'ARCHIVED') {
+      return err('album_archived');
+    }
+
+    this.state = { ...this.state, coverPhotoId: photoId };
+
+    return ok();
+  }
+
+  // A capa deixou de ser publicada (ou foi excluída): assume a próxima foto publicada, se houver.
+  replaceCover(photoId: string, nextPhotoId: string | null): boolean {
+    if (this.state.coverPhotoId !== photoId) {
+      return false;
+    }
+
+    this.state = { ...this.state, coverPhotoId: nextPhotoId };
+
+    return true;
   }
 
   toSnapshot(): AlbumSnapshot {
