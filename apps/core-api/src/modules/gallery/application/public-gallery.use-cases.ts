@@ -10,7 +10,7 @@ import type {
 
 // Contratos do site público: somente o necessário para exibir, sem IDs internos de controle
 // (versão, chave de publicação) nem fotos ou álbuns não publicados.
-export interface PublicPhotoVariant {
+interface PublicPhotoVariant {
   width: number;
   avif: string;
   webp: string;
