@@ -12,6 +12,7 @@ const authenticatedSession: AuthSession = {
   email: 'usuario@exemplo.com',
   name: 'Usuário Exemplo',
   emailVerified: false,
+  isMember: false,
   csrfToken: 'csrf-token-teste',
 };
 

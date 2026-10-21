@@ -10,6 +10,8 @@ export interface AuthSession {
   email: string;
   name: string;
   emailVerified: boolean;
+  // Conta vinculada a uma Pessoa, o que só acontece quando ela se torna membro (ADR 0009).
+  isMember: boolean;
   csrfToken: string;
 }
 
@@ -81,6 +83,7 @@ export class SessionService {
         email: users.email,
         name: users.name,
         emailVerified: sql<boolean>`${users.emailVerifiedAt} is not null`,
+        isMember: sql<boolean>`${users.personId} is not null`,
         csrfToken: sessions.csrfToken,
       });
 

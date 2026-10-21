@@ -10,7 +10,7 @@ import {
 import type { LoginResult } from '../application/login.use-case.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
-export interface AuthenticatedUser {
+interface AuthenticatedUser {
   authenticated: true;
   csrfToken: string;
   user: {
@@ -19,6 +19,11 @@ export interface AuthenticatedUser {
     name: string;
     emailVerified: boolean;
   };
+}
+
+// Resposta de GET /auth/me: acrescenta se a conta é de um membro, o que libera os menus do painel.
+export interface CurrentSession extends AuthenticatedUser {
+  user: AuthenticatedUser['user'] & { isMember: boolean };
 }
 
 // Resposta das operações que abrem sessão: a sessão pública acrescida da mensagem da operação.
