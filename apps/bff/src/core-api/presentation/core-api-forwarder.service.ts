@@ -47,6 +47,18 @@ export class CoreApiForwarder {
       this.sessionCookies.assertCsrfToken(request, session);
     }
 
+    return this.relay(reply, call);
+  }
+
+  // Leitura do site público: sem sessão, somente GET. A Core API decide o que é público.
+  forwardPublic(
+    reply: FastifyReply,
+    call: Omit<CoreApiRequest, 'method' | 'body'>,
+  ): Promise<unknown> {
+    return this.relay(reply, { ...call, method: 'GET' });
+  }
+
+  private async relay(reply: FastifyReply, call: CoreApiRequest): Promise<unknown> {
     let response;
 
     try {

@@ -245,7 +245,15 @@ gratuita de 10 GB é da conta. No painel do Cloudflare:
 
 Os domínios públicos (`media.comvivaeficaz.com.br` e `media-hml.comvivaeficaz.com.br`, ligados ao
 mesmo bucket), a regra do WAF que restringe cada um a `/{pasta}/gallery/public/` e o token de purge
-da CDN entram com a etapa de publicação.
+da CDN entram com a etapa de publicação. Com o domínio e a regra do WAF prontos, preencher no
+serviço da Core API de cada ambiente, as três juntas:
+
+- `MEDIA_PUBLIC_BASE_URL`: `https://media.comvivaeficaz.com.br` (produção) ou
+  `https://media-hml.comvivaeficaz.com.br` (HML), sem barra final;
+- `MEDIA_CDN_ZONE_ID`: ID da zona `comvivaeficaz.com.br`;
+- `MEDIA_CDN_PURGE_TOKEN`: token da API do Cloudflare com permissão somente de _Cache Purge_ na zona.
+
+Sem elas a publicação funciona, mas fotos despublicadas não saem do cache da CDN.
 
 ## 10. Limites conhecidos
 

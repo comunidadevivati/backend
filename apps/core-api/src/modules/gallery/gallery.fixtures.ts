@@ -7,6 +7,7 @@ import {
   PhotoProcessingQueue,
   PhotoRepository,
   PrivateMediaStorage,
+  PublicMediaCache,
   type AlbumListQuery,
   type AlbumView,
   type PhotoListQuery,
@@ -47,6 +48,8 @@ export const photoSnapshot = (overrides: Partial<PhotoSnapshot> = {}): PhotoSnap
   placeholder: 'data:image/webp;base64,AAAA',
   variantWidths: [320, 640, 1024],
   failure: null,
+  publicationKey: null,
+  publishedAt: null,
   version: 1,
   ...overrides,
 });
@@ -130,11 +133,17 @@ export class InMemoryAlbumRepository extends AlbumRepository {
   }
 
   private view(snapshot: AlbumSnapshot): AlbumView {
-    const photoCount = [...(this.photos?.stored.values() ?? [])].filter(
-      ({ albumId, status }) => albumId === snapshot.id && status === 'READY',
+    const albumPhotos = [...(this.photos?.stored.values() ?? [])].filter(
+      ({ albumId }) => albumId === snapshot.id,
+    );
+
+    const photoCount = albumPhotos.filter(({ status }) => status === 'READY').length;
+
+    const publishedPhotoCount = albumPhotos.filter(
+      ({ publicationKey }) => publicationKey !== null,
     ).length;
 
-    return { ...snapshot, photoCount };
+    return { ...snapshot, photoCount, publishedPhotoCount };
   }
 }
 
@@ -180,6 +189,35 @@ export class InMemoryPhotoRepository extends PhotoRepository {
 
   listByStatus(status: PhotoStatus): Promise<PhotoSnapshot[]> {
     return Promise.resolve([...this.stored.values()].filter((photo) => photo.status === status));
+  }
+
+  listPublishable(albumId: string, limit: number): Promise<Photo[]> {
+    return Promise.resolve(
+      this.publishable(albumId)
+        .slice(0, limit)
+        .map((snapshot) => Photo.restore(snapshot)),
+    );
+  }
+
+  countPublishable(albumId: string): Promise<number> {
+    return Promise.resolve(this.publishable(albumId).length);
+  }
+
+  findFirstPublishedId(albumId: string): Promise<string | null> {
+    const [first] = [...this.stored.values()]
+      .filter((photo) => photo.albumId === albumId && photo.publicationKey !== null)
+      .toSorted((left, right) => left.id.localeCompare(right.id));
+
+    return Promise.resolve(first?.id ?? null);
+  }
+
+  private publishable(albumId: string): PhotoSnapshot[] {
+    return [...this.stored.values()]
+      .filter(
+        (photo) =>
+          photo.albumId === albumId && photo.status === 'READY' && photo.publicationKey === null,
+      )
+      .toSorted((left, right) => left.id.localeCompare(right.id));
   }
 
   insertMany(photos: readonly Photo[]): Promise<void> {
@@ -268,6 +306,22 @@ export class InMemoryMediaStorage extends PrivateMediaStorage {
     return Promise.resolve();
   }
 
+  copy(
+    sourceKey: string,
+    targetKey: string,
+    { contentType }: { contentType: string },
+  ): Promise<void> {
+    const source = this.objects.get(sourceKey);
+
+    if (!source) {
+      return Promise.reject(new Error('objeto de origem inexistente'));
+    }
+
+    this.objects.set(targetKey, { body: source.body, contentType });
+
+    return Promise.resolve();
+  }
+
   delete(keys: readonly string[]): Promise<void> {
     for (const key of keys) {
       this.objects.delete(key);
@@ -278,6 +332,17 @@ export class InMemoryMediaStorage extends PrivateMediaStorage {
 
   put(key: string, size: number): void {
     this.objects.set(key, { body: new Uint8Array(size), contentType: 'image/jpeg' });
+  }
+}
+
+// Registra as chaves enviadas ao purge da CDN.
+export class RecordingPublicMediaCache extends PublicMediaCache {
+  readonly purged: string[] = [];
+
+  purge(keys: readonly string[]): Promise<void> {
+    this.purged.push(...keys);
+
+    return Promise.resolve();
   }
 }
 

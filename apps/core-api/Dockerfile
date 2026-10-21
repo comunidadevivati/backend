@@ -23,6 +23,9 @@ FROM node:24-bookworm-slim AS runtime
 
 ENV NODE_ENV=production
 ENV PORT=10000
+# Recomendação do sharp para glibc: menos arenas do malloc evitam a fragmentação que, no
+# processamento das fotos da galeria, levava o processo além dos 512 MB da instância free.
+ENV MALLOC_ARENA_MAX=2
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 

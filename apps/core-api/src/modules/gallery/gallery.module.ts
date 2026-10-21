@@ -23,13 +23,36 @@ import {
   PhotoProcessingQueue,
   PhotoRepository,
   PrivateMediaStorage,
+  PublicGalleryReader,
+  PublicMediaCache,
+  PublicMediaUrls,
 } from './application/ports.js';
+import {
+  GetPublicAlbumUseCase,
+  ListPublicAlbumsUseCase,
+  ListPublicPhotosUseCase,
+  PublicPhotoViews,
+} from './application/public-gallery.use-cases.js';
+import { PublicPhotoRemoval } from './application/public-photos.js';
+import {
+  ChangeAlbumStatusUseCase,
+  PublishAlbumPhotosUseCase,
+  PublishPhotoUseCase,
+  SetAlbumCoverUseCase,
+  UnpublishPhotoUseCase,
+} from './application/publication.use-cases.js';
+import {
+  CloudflarePublicMediaCache,
+  NoPublicMediaCache,
+} from './infrastructure/cloudflare-public-media.cache.js';
 import {
   DrizzleAlbumRepository,
   DrizzlePhotoRepository,
 } from './infrastructure/drizzle-gallery.repositories.js';
+import { DrizzlePublicGalleryReader } from './infrastructure/drizzle-public-gallery.reader.js';
 import { InProcessPhotoQueue } from './infrastructure/in-process-photo.queue.js';
 import { PhotoProcessingBootstrap } from './infrastructure/photo-processing.bootstrap.js';
+import { CdnPublicMediaUrls, SignedPublicMediaUrls } from './infrastructure/public-media-urls.js';
 import {
   DisabledPrivateMediaStorage,
   S3PrivateMediaStorage,
@@ -38,6 +61,7 @@ import { SharpImageProcessor } from './infrastructure/sharp-image.processor.js';
 import { SystemClock, UuidV7IdGenerator } from './infrastructure/system.adapters.js';
 import { AlbumsController } from './presentation/albums.controller.js';
 import { PhotosController } from './presentation/photos.controller.js';
+import { PublicGalleryController } from './presentation/public-gallery.controller.js';
 
 // Área privada do bucket de mídia conforme MEDIA_STORAGE (validado ao iniciar pelo env.schema).
 const privateStorageFactory = (config: ConfigService): PrivateMediaStorage =>
@@ -52,10 +76,40 @@ const privateStorageFactory = (config: ConfigService): PrivateMediaStorage =>
       })
     : new DisabledPrivateMediaStorage();
 
+// Purge da CDN somente com o domínio público configurado (as três variáveis vêm juntas).
+const publicCacheFactory = (config: ConfigService): PublicMediaCache => {
+  const publicBaseUrl = config.get<string>('MEDIA_PUBLIC_BASE_URL');
+
+  const keyPrefix = config.get<string>('MEDIA_KEY_PREFIX');
+
+  return publicBaseUrl && keyPrefix && config.get<string>('MEDIA_STORAGE') === 's3'
+    ? new CloudflarePublicMediaCache({
+        publicBaseUrl,
+        keyPrefix,
+        zoneId: config.getOrThrow<string>('MEDIA_CDN_ZONE_ID'),
+        apiToken: config.getOrThrow<string>('MEDIA_CDN_PURGE_TOKEN'),
+      })
+    : new NoPublicMediaCache();
+};
+
+// URLs do site: domínio público quando configurado; senão, URLs assinadas de validade curta.
+const publicUrlsFactory = (
+  config: ConfigService,
+  storage: PrivateMediaStorage,
+): PublicMediaUrls => {
+  const publicBaseUrl = config.get<string>('MEDIA_PUBLIC_BASE_URL');
+
+  const keyPrefix = config.get<string>('MEDIA_KEY_PREFIX');
+
+  return publicBaseUrl && keyPrefix
+    ? new CdnPublicMediaUrls(publicBaseUrl, keyPrefix)
+    : new SignedPublicMediaUrls(storage);
+};
+
 // Composition Root do contexto Gallery (ADR 0010): os Use Cases não conhecem o NestJS e são
 // montados por factories.
 @Module({
-  controllers: [AlbumsController, PhotosController],
+  controllers: [AlbumsController, PhotosController, PublicGalleryController],
   providers: [
     { provide: AlbumRepository, useClass: DrizzleAlbumRepository },
     { provide: PhotoRepository, useClass: DrizzlePhotoRepository },
@@ -133,11 +187,106 @@ const privateStorageFactory = (config: ConfigService): PrivateMediaStorage =>
         new ResumeProcessingUseCase(photos, queue),
       inject: [PhotoRepository, PhotoProcessingQueue],
     },
+    { provide: PublicMediaCache, useFactory: publicCacheFactory, inject: [ConfigService] },
+    {
+      provide: PublicPhotoRemoval,
+      useFactory: (
+        albums: AlbumRepository,
+        photos: PhotoRepository,
+        storage: PrivateMediaStorage,
+        cache: PublicMediaCache,
+      ) => new PublicPhotoRemoval(albums, photos, storage, cache),
+      inject: [AlbumRepository, PhotoRepository, PrivateMediaStorage, PublicMediaCache],
+    },
     {
       provide: DeletePhotoUseCase,
-      useFactory: (photos: PhotoRepository, storage: PrivateMediaStorage) =>
-        new DeletePhotoUseCase(photos, storage),
-      inject: [PhotoRepository, PrivateMediaStorage],
+      useFactory: (
+        photos: PhotoRepository,
+        storage: PrivateMediaStorage,
+        removal: PublicPhotoRemoval,
+      ) => new DeletePhotoUseCase(photos, storage, removal),
+      inject: [PhotoRepository, PrivateMediaStorage, PublicPhotoRemoval],
+    },
+    {
+      provide: PublishPhotoUseCase,
+      useFactory: (
+        albums: AlbumRepository,
+        photos: PhotoRepository,
+        storage: PrivateMediaStorage,
+        ids: IdGenerator,
+        clock: Clock,
+        views: PhotoViews,
+      ) => new PublishPhotoUseCase(albums, photos, storage, ids, clock, views),
+      inject: [
+        AlbumRepository,
+        PhotoRepository,
+        PrivateMediaStorage,
+        IdGenerator,
+        Clock,
+        PhotoViews,
+      ],
+    },
+    {
+      provide: PublishAlbumPhotosUseCase,
+      useFactory: (
+        albums: AlbumRepository,
+        photos: PhotoRepository,
+        storage: PrivateMediaStorage,
+        ids: IdGenerator,
+        clock: Clock,
+      ) => new PublishAlbumPhotosUseCase(albums, photos, storage, ids, clock),
+      inject: [AlbumRepository, PhotoRepository, PrivateMediaStorage, IdGenerator, Clock],
+    },
+    {
+      provide: UnpublishPhotoUseCase,
+      useFactory: (
+        photos: PhotoRepository,
+        storage: PrivateMediaStorage,
+        removal: PublicPhotoRemoval,
+        views: PhotoViews,
+      ) => new UnpublishPhotoUseCase(photos, storage, removal, views),
+      inject: [PhotoRepository, PrivateMediaStorage, PublicPhotoRemoval, PhotoViews],
+    },
+    {
+      provide: ChangeAlbumStatusUseCase,
+      useFactory: (albums: AlbumRepository, photos: PhotoRepository, clock: Clock) =>
+        new ChangeAlbumStatusUseCase(albums, photos, clock),
+      inject: [AlbumRepository, PhotoRepository, Clock],
+    },
+    {
+      provide: SetAlbumCoverUseCase,
+      useFactory: (albums: AlbumRepository, photos: PhotoRepository) =>
+        new SetAlbumCoverUseCase(albums, photos),
+      inject: [AlbumRepository, PhotoRepository],
+    },
+    { provide: PublicGalleryReader, useClass: DrizzlePublicGalleryReader },
+    {
+      provide: PublicMediaUrls,
+      useFactory: publicUrlsFactory,
+      inject: [ConfigService, PrivateMediaStorage],
+    },
+    {
+      provide: PublicPhotoViews,
+      useFactory: (urls: PublicMediaUrls) => new PublicPhotoViews(urls),
+      inject: [PublicMediaUrls],
+    },
+    {
+      provide: ListPublicAlbumsUseCase,
+      useFactory: (reader: PublicGalleryReader, views: PublicPhotoViews) =>
+        new ListPublicAlbumsUseCase(reader, views),
+      inject: [PublicGalleryReader, PublicPhotoViews],
+    },
+    {
+      provide: GetPublicAlbumUseCase,
+      useFactory: (reader: PublicGalleryReader, views: PublicPhotoViews) =>
+        new GetPublicAlbumUseCase(reader, views),
+      inject: [PublicGalleryReader, PublicPhotoViews],
+    },
+    {
+      provide: ListPublicPhotosUseCase,
+      useFactory: (reader: PublicGalleryReader, views: PublicPhotoViews) =>
+        new ListPublicPhotosUseCase(reader, views),
+      inject: [PublicGalleryReader, PublicPhotoViews],
     },
     PhotoProcessingBootstrap,
   ],

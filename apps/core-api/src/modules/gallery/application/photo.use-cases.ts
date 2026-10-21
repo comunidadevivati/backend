@@ -29,6 +29,7 @@ import type {
   PhotoRepository,
   PrivateMediaStorage,
 } from './ports.js';
+import type { PublicPhotoRemoval } from './public-photos.js';
 
 // Validade das URLs de envio e das miniaturas do painel.
 const UPLOAD_URL_TTL_SECONDS = 15 * 60;
@@ -69,6 +70,8 @@ export interface PhotoView {
   placeholder: string | null;
   failure: PhotoFailure | null;
   previewUrl: string | null;
+  // Publicada no site (variantes na área pública); null quando não publicada.
+  publishedAt: string | null;
   version: number;
 }
 
@@ -93,8 +96,18 @@ export class PhotoViews {
   constructor(private readonly storage: PrivateMediaStorage) {}
 
   async of(snapshot: PhotoSnapshot): Promise<PhotoView> {
-    const { albumId, failure, height, id, placeholder, status, variantWidths, version, width } =
-      snapshot;
+    const {
+      albumId,
+      failure,
+      height,
+      id,
+      placeholder,
+      publishedAt,
+      status,
+      variantWidths,
+      version,
+      width,
+    } = snapshot;
 
     const previewWidth = previewWidthOf(variantWidths);
 
@@ -106,7 +119,18 @@ export class PhotoViews {
           )
         : null;
 
-    return { id, albumId, status, width, height, placeholder, failure, previewUrl, version };
+    return {
+      id,
+      albumId,
+      status,
+      width,
+      height,
+      placeholder,
+      failure,
+      previewUrl,
+      publishedAt,
+      version,
+    };
   }
 }
 
@@ -365,11 +389,12 @@ export class ListPhotosUseCase {
   }
 }
 
-// Exclusão definitiva: apaga os objetos privados e os metadados.
+// Exclusão definitiva: tira a foto do site (se publicada), apaga os objetos privados e os metadados.
 export class DeletePhotoUseCase {
   constructor(
     private readonly photos: PhotoRepository,
     private readonly storage: PrivateMediaStorage,
+    private readonly removal: PublicPhotoRemoval,
   ) {}
 
   async execute(photoId: string): Promise<Result<void, GalleryError>> {
@@ -379,11 +404,21 @@ export class DeletePhotoUseCase {
       return err(notFound);
     }
 
+    const { albumId, publicationKey, variantWidths } = photo;
+
     if (this.storage.enabled) {
-      await this.storage.delete(privateKeysOf(photo.albumId, photoId, photo.variantWidths));
+      if (publicationKey !== null) {
+        await this.removal.removeObjects(albumId, photoId, publicationKey, variantWidths);
+      }
+
+      await this.storage.delete(privateKeysOf(albumId, photoId, variantWidths));
     }
 
     await this.photos.delete(photoId);
+
+    if (publicationKey !== null) {
+      await this.removal.replaceCover(albumId, photoId);
+    }
 
     return ok();
   }

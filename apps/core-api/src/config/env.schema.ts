@@ -37,8 +37,32 @@ const envSchema = z
       .string()
       .regex(/^[a-z0-9][a-z0-9-]{0,31}$/u)
       .optional(),
+
+    // Domínio público do bucket (ex.: https://media-hml.comvivaeficaz.com.br). Com ele, a zona e o
+    // token de purge, as fotos despublicadas saem do cache da CDN. Opcional enquanto o domínio
+    // público não está ligado.
+    MEDIA_PUBLIC_BASE_URL: z.url({ protocol: /^https?$/u }).optional(),
+
+    MEDIA_CDN_ZONE_ID: z.string().min(1).optional(),
+
+    MEDIA_CDN_PURGE_TOKEN: z.string().min(1).optional(),
   })
   .superRefine((config, context) => {
+    const cdnKeys = [
+      'MEDIA_PUBLIC_BASE_URL',
+      'MEDIA_CDN_ZONE_ID',
+      'MEDIA_CDN_PURGE_TOKEN',
+    ] as const;
+
+    // Purge exige as três: tudo ou nada.
+    if (cdnKeys.some((key) => config[key])) {
+      for (const key of cdnKeys) {
+        if (!config[key]) {
+          context.addIssue({ code: 'custom', path: [key], message: 'Required' });
+        }
+      }
+    }
+
     if (config.MEDIA_STORAGE !== 's3') {
       return;
     }

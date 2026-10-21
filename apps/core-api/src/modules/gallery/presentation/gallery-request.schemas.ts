@@ -46,3 +46,24 @@ export const requestUploadsSchema = z.strictObject({
 });
 
 export const resourceIdSchema = z.uuid();
+
+export const setCoverSchema = z.strictObject({
+  photoId: z.uuid(),
+});
+
+// Site público: páginas menores de álbuns e maiores de fotos.
+export const listPublicAlbumsSchema = z.object({
+  cursor,
+  limit: z.coerce.number().int().min(1).max(50).default(12),
+});
+
+export const listPublicPhotosSchema = z.object({
+  cursor,
+  limit: z.coerce.number().int().min(1).max(100).default(48),
+});
+
+// Formato dos slugs gerados (ex.: 2026-10-19-culto-de-domingo).
+export const slugSchema = z
+  .string()
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/u)
+  .max(200);

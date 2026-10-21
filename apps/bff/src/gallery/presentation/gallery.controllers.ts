@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   Res,
@@ -19,6 +20,8 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 const ALBUM_QUERY_KEYS = ['status', 'cursor', 'limit'] as const;
 
 const PHOTO_QUERY_KEYS = ['cursor', 'limit'] as const;
+
+type AlbumAction = 'publish' | 'unpublish' | 'archive' | 'restore';
 
 // Administração da galeria (ADR 0010), encaminhada à Core API. As fotos não passam por aqui: o
 // navegador envia direto ao bucket de mídia pela URL devolvida em /uploads.
@@ -117,6 +120,85 @@ export class GalleryAlbumsController {
       body: body ?? {},
     });
   }
+
+  // Publica um lote das fotos prontas; o painel repete enquanto `remaining` > 0.
+  @Post(':id/photos/publish')
+  @Header('Cache-Control', 'no-store')
+  publishPhotos(
+    @Param('id') id: string,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    return this.forwarder.forward(request, reply, {
+      write: true,
+      method: 'POST',
+      path: resourcePath('gallery/albums', id, 'photos', 'publish'),
+    });
+  }
+
+  @Put(':id/cover')
+  @Header('Cache-Control', 'no-store')
+  setCover(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    return this.forwarder.forward(request, reply, {
+      write: true,
+      method: 'PUT',
+      path: resourcePath('gallery/albums', id, 'cover'),
+      body: body ?? {},
+    });
+  }
+
+  @Post(':id/publish')
+  @Header('Cache-Control', 'no-store')
+  publish(
+    @Param('id') id: string,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    return this.change(id, 'publish', request, reply);
+  }
+
+  @Post(':id/unpublish')
+  @Header('Cache-Control', 'no-store')
+  unpublish(
+    @Param('id') id: string,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    return this.change(id, 'unpublish', request, reply);
+  }
+
+  @Post(':id/archive')
+  @Header('Cache-Control', 'no-store')
+  archive(
+    @Param('id') id: string,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    return this.change(id, 'archive', request, reply);
+  }
+
+  @Post(':id/restore')
+  @Header('Cache-Control', 'no-store')
+  restore(
+    @Param('id') id: string,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    return this.change(id, 'restore', request, reply);
+  }
+
+  private change(id: string, action: AlbumAction, request: FastifyRequest, reply: FastifyReply) {
+    return this.forwarder.forward(request, reply, {
+      write: true,
+      method: 'POST',
+      path: resourcePath('gallery/albums', id, action),
+    });
+  }
 }
 
 @Controller('api/v1/gallery/photos')
@@ -135,6 +217,34 @@ export class GalleryPhotosController {
       write: true,
       method: 'POST',
       path: resourcePath('gallery/photos', id, 'complete'),
+    });
+  }
+
+  @Post(':id/publish')
+  @Header('Cache-Control', 'no-store')
+  publish(
+    @Param('id') id: string,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    return this.forwarder.forward(request, reply, {
+      write: true,
+      method: 'POST',
+      path: resourcePath('gallery/photos', id, 'publish'),
+    });
+  }
+
+  @Post(':id/unpublish')
+  @Header('Cache-Control', 'no-store')
+  unpublish(
+    @Param('id') id: string,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    return this.forwarder.forward(request, reply, {
+      write: true,
+      method: 'POST',
+      path: resourcePath('gallery/photos', id, 'unpublish'),
     });
   }
 

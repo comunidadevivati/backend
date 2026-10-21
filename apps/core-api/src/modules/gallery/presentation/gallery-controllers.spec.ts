@@ -13,12 +13,21 @@ import {
   PhotoViews,
   RequestUploadsUseCase,
 } from '../application/photo.use-cases.js';
+import { PublicPhotoRemoval } from '../application/public-photos.js';
+import {
+  ChangeAlbumStatusUseCase,
+  PublishAlbumPhotosUseCase,
+  PublishPhotoUseCase,
+  SetAlbumCoverUseCase,
+  UnpublishPhotoUseCase,
+} from '../application/publication.use-cases.js';
 import {
   ALBUM_ID,
   FixedClock,
   InMemoryAlbumRepository,
   InMemoryMediaStorage,
   InMemoryPhotoRepository,
+  RecordingPublicMediaCache,
   RecordingQueue,
   SequentialIdGenerator,
 } from '../gallery.fixtures.js';
@@ -38,6 +47,8 @@ const createControllers = ({ enabled = true } = {}) => {
 
   const views = new PhotoViews(storage);
 
+  const removal = new PublicPhotoRemoval(albums, photos, storage, new RecordingPublicMediaCache());
+
   return {
     storage,
     albums: new AlbumsController(
@@ -47,10 +58,15 @@ const createControllers = ({ enabled = true } = {}) => {
       new UpdateAlbumUseCase(albums, clock),
       new ListPhotosUseCase(albums, photos, views),
       new RequestUploadsUseCase(albums, photos, storage, ids, clock),
+      new PublishAlbumPhotosUseCase(albums, photos, storage, ids, clock),
+      new SetAlbumCoverUseCase(albums, photos),
+      new ChangeAlbumStatusUseCase(albums, photos, clock),
     ),
     photos: new PhotosController(
       new CompleteUploadUseCase(photos, storage, new RecordingQueue(), views),
-      new DeletePhotoUseCase(photos, storage),
+      new DeletePhotoUseCase(photos, storage, removal),
+      new PublishPhotoUseCase(albums, photos, storage, ids, clock, views),
+      new UnpublishPhotoUseCase(photos, storage, removal, views),
     ),
   };
 };

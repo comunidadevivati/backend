@@ -2,10 +2,12 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Inject,
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -24,12 +26,20 @@ import {
   type PhotoPage,
   type UploadTicket,
 } from '../application/photo.use-cases.js';
+import {
+  ChangeAlbumStatusUseCase,
+  PublishAlbumPhotosUseCase,
+  SetAlbumCoverUseCase,
+  type AlbumStatusAction,
+  type PublishBatchResult,
+} from '../application/publication.use-cases.js';
 import { parseId, throwInvalidFields, unwrap } from './gallery-problem.js';
 import {
   createAlbumSchema,
   listAlbumsSchema,
   listPhotosSchema,
   requestUploadsSchema,
+  setCoverSchema,
   updateAlbumSchema,
 } from './gallery-request.schemas.js';
 import type { AlbumView } from '../application/ports.js';
@@ -51,6 +61,12 @@ export class AlbumsController {
     private readonly listPhotos: ListPhotosUseCase,
     @Inject(RequestUploadsUseCase)
     private readonly requestUploads: RequestUploadsUseCase,
+    @Inject(PublishAlbumPhotosUseCase)
+    private readonly publishAlbumPhotos: PublishAlbumPhotosUseCase,
+    @Inject(SetAlbumCoverUseCase)
+    private readonly setAlbumCover: SetAlbumCoverUseCase,
+    @Inject(ChangeAlbumStatusUseCase)
+    private readonly changeAlbumStatus: ChangeAlbumStatusUseCase,
   ) {}
 
   // Filtros: status, cursor (nextCursor da página anterior) e limit. Mais recentes primeiro.
@@ -103,5 +119,52 @@ export class AlbumsController {
     const { files } = parseOrThrow(requestUploadsSchema, body, throwInvalidFields);
 
     return { items: unwrap(await this.requestUploads.execute({ albumId, files })) };
+  }
+
+  // Publica um lote das fotos prontas ainda não publicadas; repetir enquanto `remaining` > 0.
+  @Post(':id/photos/publish')
+  @HttpCode(200)
+  async publishPhotos(@Param('id') id: string): Promise<PublishBatchResult> {
+    return unwrap(await this.publishAlbumPhotos.execute(parseId(id)));
+  }
+
+  // A capa precisa ser uma foto publicada do próprio álbum.
+  @Put(':id/cover')
+  async setCover(@Param('id') id: string, @Body() body: unknown): Promise<AlbumView> {
+    const { photoId } = parseOrThrow(setCoverSchema, body, throwInvalidFields);
+
+    return unwrap(await this.setAlbumCover.execute(parseId(id), photoId));
+  }
+
+  // DRAFT → PUBLISHED: exige ao menos uma foto publicada.
+  @Post(':id/publish')
+  @HttpCode(200)
+  publish(@Param('id') id: string): Promise<AlbumView> {
+    return this.change(id, 'publish');
+  }
+
+  // PUBLISHED → DRAFT: sai do site; as fotos continuam publicadas.
+  @Post(':id/unpublish')
+  @HttpCode(200)
+  unpublish(@Param('id') id: string): Promise<AlbumView> {
+    return this.change(id, 'unpublish');
+  }
+
+  // DRAFT → ARCHIVED (somente leitura).
+  @Post(':id/archive')
+  @HttpCode(200)
+  archive(@Param('id') id: string): Promise<AlbumView> {
+    return this.change(id, 'archive');
+  }
+
+  // ARCHIVED → DRAFT.
+  @Post(':id/restore')
+  @HttpCode(200)
+  restore(@Param('id') id: string): Promise<AlbumView> {
+    return this.change(id, 'restore');
+  }
+
+  private async change(id: string, action: AlbumStatusAction): Promise<AlbumView> {
+    return unwrap(await this.changeAlbumStatus.execute(parseId(id), action));
   }
 }

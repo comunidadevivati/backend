@@ -45,11 +45,14 @@ export interface PhotoSnapshot {
   placeholder: string | null;
   variantWidths: number[];
   failure: PhotoFailure | null;
+  // Chave da publicação atual (pasta das variantes na área pública); null quando não publicada.
+  publicationKey: string | null;
+  publishedAt: string | null;
   version: number;
 }
 
-// Fotografia de um álbum: PENDING_UPLOAD → PROCESSING → READY | FAILED. A publicação (cópia para o
-// área pública do bucket) vem na etapa de publicação (ADR 0010).
+// Fotografia de um álbum: PENDING_UPLOAD → PROCESSING → READY | FAILED. Uma foto READY pode ser
+// publicada (variantes copiadas para a área pública do bucket, ADR 0010) e despublicada.
 export class Photo {
   private constructor(private state: PhotoSnapshot) {}
 
@@ -70,6 +73,8 @@ export class Photo {
       placeholder: null,
       variantWidths: [],
       failure: null,
+      publicationKey: null,
+      publishedAt: null,
       version: 1,
     });
   }
@@ -97,6 +102,34 @@ export class Photo {
 
   get variantWidths(): readonly number[] {
     return this.state.variantWidths;
+  }
+
+  get publicationKey(): string | null {
+    return this.state.publicationKey;
+  }
+
+  // As variantes já foram copiadas para a área pública sob esta chave.
+  publish(publicationKey: string, publishedAt: string): Result<void, 'invalid_photo_status'> {
+    if (this.state.status !== 'READY' || this.state.publicationKey !== null) {
+      return err('invalid_photo_status');
+    }
+
+    this.state = { ...this.state, publicationKey, publishedAt };
+
+    return ok();
+  }
+
+  // Devolve a chave da publicação encerrada, para apagar as variantes públicas.
+  unpublish(): Result<string, 'invalid_photo_status'> {
+    const { publicationKey } = this.state;
+
+    if (publicationKey === null) {
+      return err('invalid_photo_status');
+    }
+
+    this.state = { ...this.state, publicationKey: null, publishedAt: null };
+
+    return ok(publicationKey);
   }
 
   // O envio terminou (o objeto existe no bucket): segue para o processamento.
