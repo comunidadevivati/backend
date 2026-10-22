@@ -1,4 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { setTimeout as sleep } from 'node:timers/promises';
+import { Inject, Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 export interface CoreApiRequest {
@@ -22,13 +23,29 @@ export class CoreApiUnavailableError extends Error {
   }
 }
 
+// Abaixo dos 70 s do frontend e dos 100 s do Cloudflare, com folga para repetir a chamada original.
+const WAKE_DEADLINE_MS = 50_000;
+
+const WAKE_ATTEMPT_TIMEOUT_MS = 15_000;
+
+const WAKE_RETRY_DELAY_MS = 2_000;
+
+// Health recente dispensa nova verificação: evita uma chamada à Core API por aba aberta.
+const AWAKE_TTL_MS = 30_000;
+
 @Injectable()
-export class CoreApiClient {
+export class CoreApiClient implements OnApplicationBootstrap {
+  private readonly logger = new Logger(CoreApiClient.name);
+
   private readonly baseUrl: URL;
 
   private readonly token: string;
 
   private readonly timeoutMs: number;
+
+  private pendingWake: Promise<boolean> | null = null;
+
+  private awakeAt = 0;
 
   constructor(@Inject(ConfigService) configService: ConfigService) {
     this.baseUrl = new URL('/api/v1/', configService.getOrThrow<string>('CORE_API_URL'));
@@ -38,7 +55,71 @@ export class CoreApiClient {
     this.timeoutMs = configService.getOrThrow<number>('CORE_API_TIMEOUT_MS');
   }
 
-  async send({ body, method, path, query }: CoreApiRequest): Promise<CoreApiResponse> {
+  // Quando o BFF sobe (em geral, o primeiro acesso depois do repouso), já acorda a Core API em
+  // paralelo, sem bloquear a inicialização.
+  onApplicationBootstrap(): void {
+    void this.wake();
+  }
+
+  send(request: CoreApiRequest): Promise<CoreApiResponse> {
+    return this.request(request, this.timeoutMs);
+  }
+
+  // No Render Free, BFF e Core API entram em repouso sem uso, cada um no seu tempo. Enquanto a Core
+  // API acorda, as chamadas falham, demoram ou recebem 5xx do Render. Chama o health dela até
+  // responder ou até o prazo, com uma única verificação em andamento por vez. true se acordou.
+  wake(): Promise<boolean> {
+    if (Date.now() - this.awakeAt < AWAKE_TTL_MS) {
+      return Promise.resolve(true);
+    }
+
+    this.pendingWake ??= this.pollHealth().finally(() => {
+      this.pendingWake = null;
+    });
+
+    return this.pendingWake;
+  }
+
+  private async pollHealth(): Promise<boolean> {
+    const deadline = Date.now() + WAKE_DEADLINE_MS;
+
+    // oxlint-disable-next-line no-await-in-loop -- tentativas sucessivas até a Core API responder
+    while (!(await this.isHealthy(deadline))) {
+      if (Date.now() + WAKE_RETRY_DELAY_MS >= deadline) {
+        this.logger.warn(
+          'Core API não acordou dentro do prazo; a próxima chamada tentará de novo.',
+        );
+
+        return false;
+      }
+
+      // oxlint-disable-next-line no-await-in-loop -- intervalo entre as tentativas
+      await sleep(WAKE_RETRY_DELAY_MS);
+    }
+
+    this.awakeAt = Date.now();
+
+    this.logger.log('Core API acordada.');
+
+    return true;
+  }
+
+  private async isHealthy(deadline: number): Promise<boolean> {
+    const timeoutMs = Math.max(1000, Math.min(WAKE_ATTEMPT_TIMEOUT_MS, deadline - Date.now()));
+
+    try {
+      const { status } = await this.request({ method: 'GET', path: 'health' }, timeoutMs);
+
+      return status === 200;
+    } catch {
+      return false;
+    }
+  }
+
+  private async request(
+    { body, method, path, query }: CoreApiRequest,
+    timeoutMs: number,
+  ): Promise<CoreApiResponse> {
     const url = new URL(path, this.baseUrl);
 
     for (const [key, value] of Object.entries(query ?? {})) {
@@ -54,7 +135,7 @@ export class CoreApiClient {
           ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
         },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-        signal: AbortSignal.timeout(this.timeoutMs),
+        signal: AbortSignal.timeout(timeoutMs),
       });
 
       const text = await response.text();

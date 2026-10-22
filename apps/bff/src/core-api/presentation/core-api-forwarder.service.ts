@@ -11,6 +11,7 @@ import {
   CoreApiClient,
   CoreApiUnavailableError,
   type CoreApiRequest,
+  type CoreApiResponse,
 } from '../infrastructure/core-api.client.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
@@ -90,7 +91,7 @@ export class CoreApiForwarder {
     let response;
 
     try {
-      response = await this.coreApi.send(call);
+      response = await this.sendWaking(call);
     } catch (error) {
       if (error instanceof CoreApiUnavailableError) {
         this.logger.error(`Core API indisponível em ${call.method} ${call.path}.`);
@@ -112,5 +113,33 @@ export class CoreApiForwarder {
     void reply.status(response.status).header('Content-Type', response.contentType);
 
     return response.body;
+  }
+
+  // Core API em repouso (Render Free) falha ou responde 5xx enquanto acorda: o BFF a acorda e repete
+  // leituras uma vez. Escritas não são repetidas, para não duplicar efeitos; só disparam o despertar.
+  private async sendWaking(call: CoreApiRequest): Promise<CoreApiResponse> {
+    try {
+      const response = await this.coreApi.send(call);
+
+      if (response.status < 500 || !(await this.wakeToRetry(call))) {
+        return response;
+      }
+    } catch (error) {
+      if (!(error instanceof CoreApiUnavailableError) || !(await this.wakeToRetry(call))) {
+        throw error;
+      }
+    }
+
+    return this.coreApi.send(call);
+  }
+
+  private wakeToRetry({ method }: CoreApiRequest): Promise<boolean> {
+    if (method !== 'GET') {
+      void this.coreApi.wake();
+
+      return Promise.resolve(false);
+    }
+
+    return this.coreApi.wake();
   }
 }
