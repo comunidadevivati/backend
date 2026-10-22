@@ -36,6 +36,17 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.logger.log('Conexão com PostgreSQL estabelecida e migrations aplicadas.');
   }
 
+  // Consulta mínima: acorda o PostgreSQL (o Neon Free suspende o compute sem uso).
+  async ping(): Promise<boolean> {
+    try {
+      await this.pool.query('select 1');
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async onModuleDestroy(): Promise<void> {
     await this.pool.end();
   }

@@ -29,16 +29,39 @@ const auditColumns = {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 };
 
+export const personSex = membersSchema.enum('person_sex', ['MALE', 'FEMALE']);
+
 // Pessoa: cadastro completo, originado de uma conta verificada do BFF. account_id referencia a conta
 // somente pelo ID estável (sem chave estrangeira entre schemas) e é único: uma Pessoa por conta.
-// Nome, telefone (somente dígitos) e e-mail (minúsculas) são normalizados pelo Domain.
+// Nome, telefones (somente dígitos), e-mails (minúsculas), endereço e links são normalizados pelo
+// Domain. O endereço é todo nulo ou todo preenchido (exceto complemento e referência).
 export const people = membersSchema.table('people', {
   id: uuid('id').primaryKey(),
   accountId: uuid('account_id').notNull().unique(),
   fullName: text('full_name').notNull(),
+  sex: personSex('sex'),
   birthDate: date('birth_date', { mode: 'string' }),
   phone: text('phone'),
+  secondaryPhone: text('secondary_phone'),
+  // E-mail de acesso da conta, acompanhado pelo BFF a cada troca confirmada.
   email: text('email'),
+  secondaryEmail: text('secondary_email'),
+  addressStreet: text('address_street'),
+  addressNumber: text('address_number'),
+  addressComplement: text('address_complement'),
+  addressDistrict: text('address_district'),
+  addressCity: text('address_city'),
+  addressState: text('address_state'),
+  addressPostalCode: text('address_postal_code'),
+  addressCountry: text('address_country'),
+  addressReference: text('address_reference'),
+  instagramUrl: text('instagram_url'),
+  facebookUrl: text('facebook_url'),
+  linkedinUrl: text('linkedin_url'),
+  twitterUrl: text('twitter_url'),
+  youtubeUrl: text('youtube_url'),
+  // Identificador da foto atual no bucket de mídia (área privada).
+  avatarKey: text('avatar_key'),
   ...auditColumns,
 });
 

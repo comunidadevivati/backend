@@ -12,6 +12,7 @@ import {
 } from './application/ports.js';
 import { Member, type MemberSnapshot } from './domain/member.js';
 import { Membership, type MembershipSnapshot } from './domain/membership.js';
+import { SocialLinks } from './domain/value-objects/social-links.js';
 import type { Person, PersonSnapshot } from './domain/person.js';
 
 export const TODAY = '2026-10-19';
@@ -124,9 +125,15 @@ export class InMemoryMemberRepository extends MemberRepository {
       id: personId,
       accountId,
       fullName,
+      sex: null,
       birthDate,
       phone,
+      secondaryPhone: null,
       email,
+      secondaryEmail: null,
+      address: null,
+      socialLinks: SocialLinks.empty().toProps(),
+      avatarKey: null,
       version: 1,
     });
 

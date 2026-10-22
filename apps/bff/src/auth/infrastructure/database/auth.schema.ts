@@ -1,4 +1,4 @@
-import { index, pgSchema, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, pgSchema, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 export const authSchema = pgSchema('auth');
 
@@ -20,6 +20,9 @@ export const users = authSchema.table('users', {
   // Pessoa (cadastro completo, na Core API) gerada a partir desta conta verificada, ao virar membro;
   // nula enquanto não houver. Identity é dono do vínculo; sem chave estrangeira entre schemas.
   personId: uuid('person_id').unique(),
+  // Inscrição para receber notícias por e-mail (preferência de comunicação da conta) e quando mudou.
+  newsOptIn: boolean('news_opt_in').notNull().default(false),
+  newsOptInUpdatedAt: timestamp('news_opt_in_updated_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -80,5 +83,28 @@ export const emailVerificationTokens = authSchema.table(
     uniqueIndex('email_verification_tokens_token_hash_uidx').on(table.tokenHash),
     index('email_verification_tokens_user_id_idx').on(table.userId),
     index('email_verification_tokens_expires_at_idx').on(table.expiresAt),
+  ],
+);
+
+// Troca do e-mail de acesso: o novo e-mail só passa a valer quando o link enviado a ele é aberto.
+export const emailChangeTokens = authSchema.table(
+  'email_change_tokens',
+  {
+    id: uuid('id').primaryKey(),
+    // Somente o SHA-256 é persistido; o token original existe apenas no e-mail enviado.
+    tokenHash: text('token_hash').notNull(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    // Já normalizado (trim + minúsculas).
+    newEmail: text('new_email').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex('email_change_tokens_token_hash_uidx').on(table.tokenHash),
+    index('email_change_tokens_user_id_idx').on(table.userId),
+    index('email_change_tokens_expires_at_idx').on(table.expiresAt),
   ],
 );

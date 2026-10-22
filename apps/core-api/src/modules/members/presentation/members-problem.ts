@@ -16,7 +16,9 @@ export const parseId = (id: string): string => {
   return id;
 };
 
-const CONFLICTS: Record<Exclude<MembersError['type'], 'not_found' | 'invalid_fields'>, string> = {
+type Conflict = Exclude<MembersError['type'], 'not_found' | 'invalid_fields' | 'storage_disabled'>;
+
+const CONFLICTS: Record<Conflict, string> = {
   version_conflict:
     'O registro foi alterado por outra operação. Recarregue os dados e tente novamente.',
   invalid_status_transition: 'A situação atual não permite esta operação.',
@@ -26,6 +28,9 @@ const CONFLICTS: Record<Exclude<MembersError['type'], 'not_found' | 'invalid_fie
   congregation_inactive: 'A congregação não está ativa.',
   duplicate_membership: 'O membro já tem um vínculo ativo ou pendente com esta congregação.',
   primary_taken: 'O membro já tem um vínculo principal ativo. Encerre-o antes de ativar outro.',
+  upload_missing: 'O arquivo não chegou ao armazenamento. Envie a foto novamente.',
+  upload_too_large: 'A foto enviada passa de 10 MB e foi descartada.',
+  invalid_image: 'O arquivo enviado não é uma imagem JPEG, PNG ou WebP válida.',
 };
 
 const toProblem = (error: MembersError): ProblemException => {
@@ -35,6 +40,9 @@ const toProblem = (error: MembersError): ProblemException => {
 
     case 'invalid_fields':
       return new ProblemException(400, 'Dados inválidos.', error.fields);
+
+    case 'storage_disabled':
+      return new ProblemException(503, 'O armazenamento de fotos não está configurado.');
 
     default:
       return new ProblemException(409, CONFLICTS[error.type]);

@@ -260,7 +260,13 @@ Sem elas a publicação funciona, mas fotos despublicadas não saem do cache da 
 - Serviços Render Free dormem após cerca de 15 minutos sem uso e levam de 30 a 60 segundos para
   voltar. Para o primeiro acesso esperar em vez de falhar: o BFF espera a Core API por até 60 s
   (`CORE_API_TIMEOUT_MS`) e a acorda assim que ele mesmo sobe, e o frontend espera até 70 s e avisa
-  "Conectando ao servidor…". Manter os serviços acordados com pings externos não é viável no free:
+  "Conectando ao servidor…".
+- O frontend chama `GET /api/v1/wake` do BFF ao abrir o site e ao voltar para a aba (no máximo uma
+  vez a cada 5 min): a requisição acorda o BFF, que acorda em paralelo o PostgreSQL (`select 1`) e a
+  Core API (health repetido por até 50 s), e responde 503 se algum não acordou, para o cliente
+  tentar de novo. Leituras que falham ou recebem 5xx da Core API também a acordam e são repetidas
+  uma vez; escritas só disparam o despertar. Manter os serviços acordados com pings externos não é
+  viável no free:
   a franquia de 750 horas por mês do workspace só cobre um serviço ligado o mês inteiro.
 - A franquia de horas é compartilhada pelos serviços gratuitos do workspace.
 - O plano gratuito não oferece SLA adequado à produção.

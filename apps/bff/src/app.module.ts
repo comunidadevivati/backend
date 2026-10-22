@@ -6,6 +6,7 @@ import { GalleryModule } from './gallery/gallery.module.js';
 import { HealthController } from './health/health.controller.js';
 import { MembersModule } from './members/members.module.js';
 import { OrganizationModule } from './organization/organization.module.js';
+import { ProfileModule } from './profile/profile.module.js';
 import { DatabaseModule } from './shared/infrastructure/database/database.module.js';
 
 @Module({
@@ -20,6 +21,7 @@ import { DatabaseModule } from './shared/infrastructure/database/database.module
     OrganizationModule,
     MembersModule,
     GalleryModule,
+    ProfileModule,
   ],
   controllers: [HealthController],
 })

@@ -1,6 +1,6 @@
 import type { Member, MemberStatus } from '../domain/member.js';
 import type { Membership, MembershipSnapshot } from '../domain/membership.js';
-import type { Person } from '../domain/person.js';
+import type { Person, PersonSnapshot } from '../domain/person.js';
 
 // As Ports são classes abstratas para servirem também de token de injeção na composição.
 
@@ -80,6 +80,48 @@ export abstract class CongregationCatalog {
   abstract findById(id: string): Promise<CongregationRef | null>;
 
   abstract findByIds(ids: readonly string[]): Promise<CongregationRef[]>;
+}
+
+// Cadastro da Pessoa como exposto no Perfil: os dados gravados, sem a chave interna da foto, que vira
+// uma URL de leitura de validade curta.
+export type PersonView = Omit<PersonSnapshot, 'accountId' | 'avatarKey'> & {
+  avatarUrl: string | null;
+};
+
+export abstract class PersonRepository {
+  abstract findById(id: string): Promise<Person | null>;
+
+  // Controle otimista: grava somente se a versão persistida ainda for a do Aggregate carregado.
+  // Retorna a nova versão, ou null quando outra escrita venceu.
+  abstract update(person: Person): Promise<number | null>;
+}
+
+// Fotos de perfil no bucket de mídia (área privada): o navegador envia direto ao bucket por URL
+// pré-assinada e a Core API processa o arquivo enviado.
+export abstract class AvatarStorage {
+  // false quando MEDIA_STORAGE=disabled.
+  abstract readonly enabled: boolean;
+
+  abstract presignUpload(
+    key: string,
+    contentType: string,
+    expiresInSeconds: number,
+  ): Promise<string>;
+
+  abstract presignDownload(key: string, expiresInSeconds: number): Promise<string>;
+
+  abstract size(key: string): Promise<number | null>;
+
+  abstract read(key: string): Promise<Uint8Array | null>;
+
+  abstract write(key: string, body: Uint8Array, contentType: string): Promise<void>;
+
+  abstract delete(keys: readonly string[]): Promise<void>;
+}
+
+export abstract class AvatarProcessor {
+  // Foto quadrada em WebP, sem metadados; null quando o conteúdo não é uma imagem aceita.
+  abstract process(input: Uint8Array): Promise<Uint8Array | null>;
 }
 
 export abstract class IdGenerator {
