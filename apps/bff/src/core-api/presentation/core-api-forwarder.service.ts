@@ -50,6 +50,34 @@ export class CoreApiForwarder {
     return this.relay(reply, call);
   }
 
+  // Rotas da própria Pessoa (Perfil): o caminho na Core API usa a Pessoa vinculada à conta da sessão,
+  // nunca um ID enviado pelo navegador. Conta sem Pessoa (que ainda não é membro) recebe 403.
+  async forwardAsPerson(
+    request: FastifyRequest,
+    reply: FastifyReply,
+    { path, write, ...call }: ForwardOptions,
+    findPersonId: (userId: string) => Promise<string | null>,
+  ): Promise<{ userId: string; body: unknown }> {
+    const { session } = await this.sessionCookies.requireSession(request);
+
+    if (write) {
+      this.sessionCookies.assertCsrfToken(request, session);
+    }
+
+    const personId = session.isMember ? await findPersonId(session.userId) : null;
+
+    if (!personId) {
+      throw new ForbiddenException('O Perfil está disponível somente para membros.');
+    }
+
+    const body = await this.relay(reply, {
+      ...call,
+      path: ['people', personId, path].filter(Boolean).join('/'),
+    });
+
+    return { userId: session.userId, body };
+  }
+
   // Leitura do site público: sem sessão, somente GET. A Core API decide o que é público.
   forwardPublic(
     reply: FastifyReply,

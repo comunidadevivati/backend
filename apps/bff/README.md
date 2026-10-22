@@ -149,7 +149,34 @@ edição direta de membro: a conta verificada vira Pessoa e membro por `POST /ap
 | `POST /api/v1/memberships/:id/activate`                              | `/deactivate`                            | Ativa ou encerra o vínculo |
 
 Configuração: `CORE_API_URL` (origem da Core API, sem `/api/v1`), `CORE_API_TOKEN` (o mesmo da Core
-API) e `CORE_API_TIMEOUT_MS` (padrão 30000, folga para o cold start do Render).
+API) e `CORE_API_TIMEOUT_MS` (padrão 60000, folga para o cold start do Render).
+
+### Perfil
+
+Somente para membros ([ADR 0012](../../docs/adr/0012-perfil-da-pessoa.md)): a Pessoa é sempre a
+vinculada à conta da sessão (`403` para conta sem Pessoa). As alterações exigem `X-CSRF-Token`.
+
+| Rota do BFF                           | Descrição                                                              |
+| ------------------------------------- | ---------------------------------------------------------------------- |
+| `GET /api/v1/profile`                 | Cadastro da Pessoa, com a URL da foto (válida por 1 h)                 |
+| `PUT /api/v1/profile`                 | Substitui o cadastro (exige `version`); copia nome e telefone na conta |
+| `POST /api/v1/profile/avatar/uploads` | URL de envio direto da foto (`{ contentType }`)                        |
+| `PUT /api/v1/profile/avatar`          | Confirma o envio (`{ uploadId }`) e grava a foto                       |
+| `DELETE /api/v1/profile/avatar`       | Remove a foto                                                          |
+| `GET /api/v1/profile/subscriptions`   | Inscrições da conta: `{ news }`                                        |
+| `PUT /api/v1/profile/subscriptions`   | Altera as inscrições (`{ news }`)                                      |
+
+Segurança da conta (sessão, `X-CSRF-Token` e a senha atual):
+
+- `POST /auth/password`: `{ currentPassword, newPassword }`; aplica a política de senha, mantém a
+  sessão atual e encerra as demais. `400` com `code` `invalid_password` ou `weak_password`.
+- `POST /auth/email-change`: `{ currentPassword, newEmail }`; envia o link de confirmação ao novo
+  e-mail (o atual continua valendo). `400` `invalid_password`, `409` `same_email` ou
+  `email_taken`, `429` no intervalo mínimo entre envios e `503` se o envio falhar.
+- `POST /auth/email-change/confirm`: `{ token }`, público (link aberto em outro aparelho). Troca o
+  e-mail de acesso, já verificado, acompanha a troca na Pessoa e avisa o e-mail anterior. `400`
+  para link inválido ou expirado, `409` `email_taken` e `503` se a Core API falhar (o link continua
+  válido).
 
 ### Galeria de fotos
 

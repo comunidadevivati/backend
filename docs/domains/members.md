@@ -2,7 +2,8 @@
 
 Implementação: `apps/core-api/src/modules/members`. Decisões:
 [ADR 0007](../adr/0007-members-e-vinculos-congregacionais.md) e
-[ADR 0009](../adr/0009-pessoa-e-membro-a-partir-de-conta.md) (Pessoa e membro a partir de conta verificada).
+[ADR 0009](../adr/0009-pessoa-e-membro-a-partir-de-conta.md) (Pessoa e membro a partir de conta verificada) e
+[ADR 0012](../adr/0012-perfil-da-pessoa.md) (Perfil da Pessoa).
 
 ## Linguagem ubíqua
 
@@ -19,9 +20,12 @@ Implementação: `apps/core-api/src/modules/members`. Decisões:
 
 ### Person
 
-- Campos: conta de origem (`accountId`, única), nome completo, data de nascimento, telefone,
-  e-mail e versão. O cadastro completo (foto, endereço, dependentes etc.) virá com a tela da Pessoa.
+- Campos: conta de origem (`accountId`, única), nome completo, sexo, data de nascimento, telefones
+  1 e 2, e-mail principal (o de acesso da conta), e-mail secundário, endereço, links de redes
+  sociais, foto e versão. Dependentes ficam para depois.
 - Nasce somente na conversão de uma conta verificada, com os dados da conta.
+- A própria pessoa edita o cadastro no Perfil (substituição completa, com `version`); o e-mail
+  principal só muda pela troca do e-mail de acesso, confirmada no novo endereço.
 
 ### Member
 
@@ -47,6 +51,9 @@ Implementação: `apps/core-api/src/modules/members`. Decisões:
 - Vínculo encerrado não é reaberto nem apagado.
 - Uma Pessoa por conta e um membro por Pessoa (restrições únicas): converter a mesma conta de novo
   devolve o mesmo membro.
+- Endereço opcional; quando informado, exige logradouro, número, bairro, cidade, estado, CEP e país
+  (no Brasil, CEP com 8 dígitos e UF válida). Links de redes sociais somente HTTPS do domínio da
+  própria rede. Foto: JPEG, PNG ou WebP de até 10 MB, gravada como WebP quadrado de 512 px.
 
 ## Use Cases
 
@@ -59,6 +66,12 @@ Implementação: `apps/core-api/src/modules/members`. Decisões:
 | ListMemberships        | `GET /members/:id/memberships` (histórico, com a congregação)   |
 | RegisterMembership     | `POST /members/:id/memberships` (`{ congregationId, primary }`) |
 | ChangeMembershipStatus | `POST /memberships/:id/{activate,deactivate}`                   |
+| GetPerson              | `GET /people/:id` (com a URL da foto, válida por 1 h)           |
+| UpdatePerson           | `PUT /people/:id` (cadastro completo, exceto e-mail principal)  |
+| ChangePersonEmail      | `PUT /people/:id/email` (`{ email }`, após a troca na conta)    |
+| RequestAvatarUpload    | `POST /people/:id/avatar/uploads` (`{ contentType }`)           |
+| CompleteAvatarUpload   | `PUT /people/:id/avatar` (`{ uploadId }`)                       |
+| RemoveAvatar           | `DELETE /people/:id/avatar`                                     |
 
 Membros são devolvidos com os dados da Pessoa (`person`). `POST /members` responde `201` ao criar
 Pessoa e membro e `200` com o mesmo membro quando a conta já foi convertida. O filtro

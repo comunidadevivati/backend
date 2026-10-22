@@ -9,20 +9,77 @@ import {
   MemberQueries,
   MemberRepository,
   MembershipRepository,
+  PersonRepository,
   type MemberListQuery,
   type MemberView,
 } from '../application/ports.js';
 import { Member, type MemberSnapshot } from '../domain/member.js';
 import { Membership, type MembershipSnapshot } from '../domain/membership.js';
+import { Person, type PersonSnapshot } from '../domain/person.js';
 import { members, memberships, people } from './database/members.schema.js';
 import type { Database } from '../../../shared/infrastructure/database/database.js';
-import type { Person } from '../domain/person.js';
 
 // Os registros Drizzle não saem desta camada: são convertidos em snapshots do Domain.
 
 type MemberRow = typeof members.$inferSelect;
 
 type MembershipRow = typeof memberships.$inferSelect;
+
+type PersonRow = typeof people.$inferSelect;
+
+// Endereço e redes sociais ficam em colunas; o endereço é nulo quando não há logradouro.
+const toPersonSnapshot = (row: PersonRow): PersonSnapshot => ({
+  id: row.id,
+  accountId: row.accountId,
+  fullName: row.fullName,
+  sex: row.sex,
+  birthDate: row.birthDate,
+  phone: row.phone,
+  secondaryPhone: row.secondaryPhone,
+  email: row.email,
+  secondaryEmail: row.secondaryEmail,
+  address:
+    row.addressStreet === null
+      ? null
+      : {
+          street: row.addressStreet,
+          number: row.addressNumber ?? '',
+          complement: row.addressComplement,
+          district: row.addressDistrict ?? '',
+          city: row.addressCity ?? '',
+          state: row.addressState ?? '',
+          postalCode: row.addressPostalCode ?? '',
+          country: row.addressCountry ?? '',
+          reference: row.addressReference,
+        },
+  socialLinks: {
+    instagram: row.instagramUrl,
+    facebook: row.facebookUrl,
+    linkedin: row.linkedinUrl,
+    twitter: row.twitterUrl,
+    youtube: row.youtubeUrl,
+  },
+  avatarKey: row.avatarKey,
+  version: row.version,
+});
+
+const toPersonRow = ({ address, socialLinks, ...snapshot }: PersonSnapshot) => ({
+  ...snapshot,
+  addressStreet: address?.street ?? null,
+  addressNumber: address?.number ?? null,
+  addressComplement: address?.complement ?? null,
+  addressDistrict: address?.district ?? null,
+  addressCity: address?.city ?? null,
+  addressState: address?.state ?? null,
+  addressPostalCode: address?.postalCode ?? null,
+  addressCountry: address?.country ?? null,
+  addressReference: address?.reference ?? null,
+  instagramUrl: socialLinks.instagram,
+  facebookUrl: socialLinks.facebook,
+  linkedinUrl: socialLinks.linkedin,
+  twitterUrl: socialLinks.twitter,
+  youtubeUrl: socialLinks.youtube,
+});
 
 const OPEN_STATUSES = ['PENDING', 'ACTIVE'] as const;
 
@@ -109,7 +166,7 @@ export class DrizzleMemberRepository extends MemberRepository {
   async enroll(person: Person, member: Member): Promise<'enrolled' | 'account_taken'> {
     try {
       await this.db.transaction(async (transaction) => {
-        await transaction.insert(people).values(person.toSnapshot());
+        await transaction.insert(people).values(toPersonRow(person.toSnapshot()));
 
         await transaction.insert(members).values(member.toSnapshot());
       });
@@ -217,6 +274,36 @@ export class DrizzleMemberQueries extends MemberQueries {
       .limit(1);
 
     return row ? toMemberView(row) : null;
+  }
+}
+
+@Injectable()
+export class DrizzlePersonRepository extends PersonRepository {
+  private readonly db: Database;
+
+  constructor(@Inject(DatabaseService) databaseService: DatabaseService) {
+    super();
+
+    this.db = databaseService.db;
+  }
+
+  async findById(id: string): Promise<Person | null> {
+    const [row] = await this.db.select().from(people).where(eq(people.id, id)).limit(1);
+
+    return row ? Person.restore(toPersonSnapshot(row)) : null;
+  }
+
+  async update(person: Person): Promise<number | null> {
+    // A conta de origem nunca muda; regravá-la com o mesmo valor é inofensivo.
+    const { id, version, ...data } = toPersonRow(person.toSnapshot());
+
+    const [row] = await this.db
+      .update(people)
+      .set({ ...data, ...nextVersion })
+      .where(and(eq(people.id, id), eq(people.version, version)))
+      .returning({ version: people.version });
+
+    return row?.version ?? null;
   }
 }
 

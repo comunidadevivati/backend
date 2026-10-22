@@ -43,6 +43,13 @@
       "when": 1792457486351,
       "tag": "0005_vinculo_pessoa",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792621168636,
+      "tag": "0006_perfil_conta",
+      "breakpoints": true
     }
   ]
 }

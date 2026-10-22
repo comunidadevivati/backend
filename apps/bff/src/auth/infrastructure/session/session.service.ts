@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, gt, lte, sql } from 'drizzle-orm';
+import { and, eq, gt, lte, ne, sql } from 'drizzle-orm';
 import { DatabaseService } from '../../../shared/infrastructure/database/database.service.js';
 import { sessions, users } from '../database/auth.schema.js';
 import type { Database } from '../../../shared/infrastructure/database/database.js';
@@ -88,6 +88,13 @@ export class SessionService {
       });
 
     return session ?? null;
+  }
+
+  // Encerra as demais sessões da conta (ex.: depois da troca de senha), mantendo a atual.
+  async deleteOtherSessions(userId: string, currentToken: string): Promise<void> {
+    await this.db
+      .delete(sessions)
+      .where(and(eq(sessions.userId, userId), ne(sessions.tokenHash, hashToken(currentToken))));
   }
 
   async deleteSession(token: string): Promise<void> {
