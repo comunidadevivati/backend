@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module.js';
+import { CommunicationModule } from './communication/communication.module.js';
 import { validateEnv } from './config/env.schema.js';
+import { FormsModule } from './forms/forms.module.js';
 import { GalleryModule } from './gallery/gallery.module.js';
 import { HealthController } from './health/health.controller.js';
 import { MembersModule } from './members/members.module.js';
@@ -22,6 +24,8 @@ import { DatabaseModule } from './shared/infrastructure/database/database.module
     MembersModule,
     GalleryModule,
     ProfileModule,
+    CommunicationModule,
+    FormsModule,
   ],
   controllers: [HealthController],
 })

@@ -87,6 +87,15 @@ export class CoreApiForwarder {
     return this.relay(reply, { ...call, method: 'GET' });
   }
 
+  // Rotas públicas que recebem uma credencial própria no corpo (ex.: token do link de resposta de um
+  // formulário): sem sessão nem CSRF; a Core API valida a credencial.
+  forwardWithBodyCredential(
+    reply: FastifyReply,
+    call: Omit<CoreApiRequest, 'method'>,
+  ): Promise<unknown> {
+    return this.relay(reply, { ...call, method: 'POST' });
+  }
+
   private async relay(reply: FastifyReply, call: CoreApiRequest): Promise<unknown> {
     let response;
 

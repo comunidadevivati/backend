@@ -19,6 +19,8 @@ const envSchema = z
     RESEND_API_KEY: z.string().startsWith('re_').optional(),
 
     EMAIL_FROM: z.string().min(3).optional(),
+    // Segredo do webhook do Resend (situação de entrega dos convites); sem ele, o webhook fica desligado.
+    RESEND_WEBHOOK_SECRET: z.string().startsWith('whsec_').optional(),
 
     PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(60).default(15),
 

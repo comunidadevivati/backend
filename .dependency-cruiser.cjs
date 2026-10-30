@@ -6,7 +6,14 @@
  * devem bloquear o pipeline de qualidade.
  */
 
-const boundedContexts = ['organization', 'identity', 'authorization', 'members'];
+const boundedContexts = [
+  'organization',
+  'identity',
+  'authorization',
+  'members',
+  'communication',
+  'forms',
+];
 
 const applications = ['core-api', 'bff', 'worker'];
 

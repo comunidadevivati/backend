@@ -43,6 +43,41 @@
       "when": 1792621132121,
       "tag": "0005_perfil_pessoa",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793213403716,
+      "tag": "0006_formularios_e_grupos",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793220970214,
+      "tag": "0007_envio_e_respostas_formularios",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793222537769,
+      "tag": "0008_respostas_em_papel",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793228517520,
+      "tag": "0009_configuracoes_e_anonimato",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793229815979,
+      "tag": "0010_entrega_lembrete_e_exclusao",
+      "breakpoints": true
     }
   ]
 }

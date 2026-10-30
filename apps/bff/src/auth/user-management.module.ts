@@ -9,14 +9,16 @@ import { SessionService } from './infrastructure/session/session.service.js';
 import { UserAccountRepository } from './infrastructure/users/user-account.repository.js';
 import { UserPersonLinkRepository } from './infrastructure/users/user-person-link.repository.js';
 import { UserRepository } from './infrastructure/users/user.repository.js';
+import { EmailRecipientsController } from './presentation/email-recipients.controller.js';
 import { SessionCookieService } from './presentation/session-cookie.service.js';
 import { UsersController } from './presentation/users.controller.js';
 
 // Gestão de contas (menu Usuários): listar, cadastrar, editar, suspender/reativar, excluir e
-// converter em membro (registrado na Core API).
+// converter em membro (registrado na Core API). Também lista as contas que podem entrar nos grupos de
+// e-mails.
 @Module({
   imports: [EmailVerificationModule, CoreApiModule],
-  controllers: [UsersController],
+  controllers: [UsersController, EmailRecipientsController],
   providers: [
     UserManagementUseCases,
     CreateMembersFromUsersUseCase,
