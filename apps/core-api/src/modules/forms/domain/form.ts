@@ -41,7 +41,7 @@ export const FORM_DEPARTMENTS = ['leadership'] as const;
 export const isFormDepartment = (value: string): value is (typeof FORM_DEPARTMENTS)[number] =>
   (FORM_DEPARTMENTS as readonly string[]).includes(value);
 
-export interface QuestionOption {
+interface QuestionOption {
   id: string;
   label: string;
 }
@@ -85,7 +85,7 @@ export interface FormDetails {
   consentText: string | null;
 }
 
-export type EmailDispatchStatus = 'SENDING' | 'SENT' | 'FAILED';
+type EmailDispatchStatus = 'SENDING' | 'SENT' | 'FAILED';
 
 // Último envio dos e-mails do formulário aos grupos (feito pelo BFF, que conhece os endereços).
 // INVITE: convite (novos e pendentes recebem link). REMINDER: lembrete só aos pendentes.
@@ -102,7 +102,7 @@ export interface EmailDispatch {
 }
 
 // Envio parado em SENDING por mais que isto (BFF reiniciado no meio) deixa de bloquear o formulário.
-export const EMAIL_DISPATCH_TIMEOUT_MS = 15 * 60 * 1000;
+const EMAIL_DISPATCH_TIMEOUT_MS = 15 * 60 * 1000;
 
 export interface FormSnapshot extends FormDetails {
   id: string;
@@ -139,7 +139,7 @@ const TRANSITIONS: Record<FormStatus, readonly FormStatus[]> = {
   CANCELLED: [],
 };
 
-export const INITIAL_FORM_STATUSES: readonly FormStatus[] = ['DRAFT', 'PUBLISHED'];
+const INITIAL_FORM_STATUSES: ReadonlySet<FormStatus> = new Set<FormStatus>(['DRAFT', 'PUBLISHED']);
 
 export type FormRuleError =
   | 'form_closed'
@@ -176,7 +176,7 @@ export class Form {
     today: string,
     now: string,
   ): Result<Form, FormRuleError> {
-    if (!INITIAL_FORM_STATUSES.includes(status)) {
+    if (!INITIAL_FORM_STATUSES.has(status)) {
       return err('invalid_status_transition');
     }
 

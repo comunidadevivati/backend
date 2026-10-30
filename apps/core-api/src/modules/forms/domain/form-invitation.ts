@@ -2,9 +2,9 @@ import { err, ok, type Result } from '../../../shared/domain/result.js';
 import { isCivilDate } from './form-details.js';
 import { isChoiceFieldType, type FormQuestion } from './form.js';
 
-export const INPUT_ANSWER_MAX_LENGTH = 500;
+const INPUT_ANSWER_MAX_LENGTH = 500;
 
-export const TEXTAREA_ANSWER_MAX_LENGTH = 5000;
+const TEXTAREA_ANSWER_MAX_LENGTH = 5000;
 
 export type InvitationStatus = 'PENDING' | 'ANSWERED';
 
@@ -49,7 +49,7 @@ const DELIVERY_RANK: Record<DeliveryStatus, number> = {
 };
 
 // Resposta a uma pergunta: texto (INPUT, TEXTAREA) ou opções marcadas (CHECKBOX, RADIO).
-export const NUMBER_ANSWER_LIMIT = 1_000_000_000;
+const NUMBER_ANSWER_LIMIT = 1_000_000_000;
 
 // Resposta a uma pergunta: texto (INPUT, TEXTAREA, DATE em AAAA-MM-DD), opções marcadas (CHECKBOX,
 // RADIO, SELECT) ou valor (SCALE, NUMBER).

@@ -9,7 +9,7 @@ import type { FormInvitationRepository, FormRepository } from './ports.js';
 // vêm da tabela sem vínculo; nos demais, das respostas digitais dos convites. Respostas em papel
 // contam na taxa, mas não têm conteúdo (o anexo fica no convite).
 
-export interface QuestionReport {
+interface QuestionReport {
   questionId: string;
   title: string;
   fieldType: QuestionFieldType;
@@ -35,7 +35,7 @@ export interface FormReport {
 
 // Uma linha por resposta digital, para a exportação (CSV). Em formulário anônimo, sem identificação e
 // só com a data; as linhas saem ordenadas pelo conteúdo, nunca pela ordem de chegada.
-export interface ResponseRow {
+interface ResponseRow {
   name: string | null;
   email: string | null;
   answeredAt: string | null;

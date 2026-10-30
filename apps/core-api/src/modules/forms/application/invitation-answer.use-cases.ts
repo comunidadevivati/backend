@@ -21,7 +21,7 @@ import type {
 
 // OPEN: aceita resposta. NOT_STARTED/ENDED: fora do período. CLOSED: não publicado, finalizado ou
 // cancelado.
-export type InvitationAvailability = 'OPEN' | 'NOT_STARTED' | 'ENDED' | 'CLOSED';
+type InvitationAvailability = 'OPEN' | 'NOT_STARTED' | 'ENDED' | 'CLOSED';
 
 export interface InvitationView {
   recipient: { name: string; email: string };

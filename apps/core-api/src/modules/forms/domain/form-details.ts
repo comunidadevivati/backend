@@ -10,31 +10,31 @@ import {
 // Limites do formulário (o frontend aplica os mesmos).
 export const FORM_TITLE_MAX_LENGTH = 120;
 
-export const FORM_DESCRIPTION_MAX_LENGTH = 2000;
+const FORM_DESCRIPTION_MAX_LENGTH = 2000;
 
-export const QUESTION_TITLE_MAX_LENGTH = 200;
+const QUESTION_TITLE_MAX_LENGTH = 200;
 
-export const QUESTION_DESCRIPTION_MAX_LENGTH = 500;
+const QUESTION_DESCRIPTION_MAX_LENGTH = 500;
 
-export const MAX_QUESTIONS = 50;
+const MAX_QUESTIONS = 50;
 
 // Checkbox, radio e lista: de 1 a 20 opções com rótulos distintos (uma só serve para "concordo").
-export const MIN_QUESTION_OPTIONS = 1;
+const MIN_QUESTION_OPTIONS = 1;
 
-export const MAX_QUESTION_OPTIONS = 20;
+const MAX_QUESTION_OPTIONS = 20;
 
-export const QUESTION_OPTION_MAX_LENGTH = 100;
+const QUESTION_OPTION_MAX_LENGTH = 100;
 
-export const MAX_RECIPIENT_GROUPS = 50;
+const MAX_RECIPIENT_GROUPS = 50;
 
 // Escala: começa em 0 ou 1 e vai até 2..10; rótulos das pontas com até 40 caracteres.
-export const SCALE_MAX_VALUE = 10;
+const SCALE_MAX_VALUE = 10;
 
-export const SCALE_LABEL_MAX_LENGTH = 40;
+const SCALE_LABEL_MAX_LENGTH = 40;
 
-export const CONSENT_TEXT_MAX_LENGTH = 1000;
+const CONSENT_TEXT_MAX_LENGTH = 1000;
 
-export interface QuestionInput {
+interface QuestionInput {
   // null cria uma pergunta nova; um ID da própria pergunta a mantém.
   id: string | null;
   title: string;

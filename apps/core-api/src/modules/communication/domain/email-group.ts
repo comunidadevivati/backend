@@ -1,10 +1,10 @@
 import { err, ok, type Result } from '../../../shared/domain/result.js';
 
-export const EMAIL_GROUP_NAME_MAX_LENGTH = 80;
+const EMAIL_GROUP_NAME_MAX_LENGTH = 80;
 
-export const EMAIL_GROUP_DESCRIPTION_MAX_LENGTH = 300;
+const EMAIL_GROUP_DESCRIPTION_MAX_LENGTH = 300;
 
-export const MAX_EMAIL_GROUP_MEMBERS = 5000;
+const MAX_EMAIL_GROUP_MEMBERS = 5000;
 
 export interface EmailGroupDetails {
   name: string;

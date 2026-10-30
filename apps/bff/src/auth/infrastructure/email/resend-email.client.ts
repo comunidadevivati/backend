@@ -24,7 +24,7 @@ const getLogoBase64 = (): string => {
   return logoBase64;
 };
 
-export interface EmailAttachment {
+interface EmailAttachment {
   filename: string;
   // Conteúdo em base64.
   content: string;
