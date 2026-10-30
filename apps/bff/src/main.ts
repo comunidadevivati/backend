@@ -6,7 +6,10 @@ import { AppModule } from './app.module.js';
 import 'reflect-metadata';
 
 const bootstrap = async (): Promise<void> => {
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
+  // rawBody: o webhook do Resend confere a assinatura sobre o corpo original.
+  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
+    rawBody: true,
+  });
 
   const config = app.get(ConfigService);
 

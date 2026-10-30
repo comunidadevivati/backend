@@ -1,5 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, gt, ilike, isNotNull, isNull, or, sql, type SQL } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  eq,
+  gt,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 import { isUniqueViolation } from '../../../shared/infrastructure/database/database-errors.js';
 import { DatabaseService } from '../../../shared/infrastructure/database/database.service.js';
 import {
@@ -26,6 +38,13 @@ export interface UserAccount {
   suspendedAt: string | null;
   // Pessoa gerada a partir da conta (na Core API, ao virar membro); nula enquanto não houver.
   personId: string | null;
+}
+
+export interface EmailRecipient {
+  id: string;
+  name: string;
+  email: string;
+  isMember: boolean;
 }
 
 export interface UserAccountListQuery {
@@ -124,6 +143,45 @@ export class UserAccountRepository {
       .where(and(...filters))
       .orderBy(asc(users.id))
       .limit(limit);
+  }
+
+  // Contas ativas com e-mail verificado (membros ou não), em ordem alfabética: são as que podem
+  // receber e-mails dos grupos (ADR 0013).
+  listEmailRecipients(limit: number): Promise<EmailRecipient[]> {
+    return this.db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        isMember: sql<boolean>`${users.personId} is not null`,
+      })
+      .from(users)
+      .where(and(eq(users.status, 'ACTIVE'), isNotNull(users.emailVerifiedAt)))
+      .orderBy(asc(sql`lower(${users.name})`), asc(users.id))
+      .limit(limit);
+  }
+
+  // As contas informadas que ainda podem receber e-mails (ativas e verificadas), com o e-mail atual.
+  findEmailRecipients(ids: readonly string[]): Promise<EmailRecipient[]> {
+    if (ids.length === 0) {
+      return Promise.resolve([]);
+    }
+
+    return this.db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        isMember: sql<boolean>`${users.personId} is not null`,
+      })
+      .from(users)
+      .where(
+        and(
+          inArray(users.id, [...ids]),
+          eq(users.status, 'ACTIVE'),
+          isNotNull(users.emailVerifiedAt),
+        ),
+      );
   }
 
   async findById(id: string): Promise<UserAccount | null> {

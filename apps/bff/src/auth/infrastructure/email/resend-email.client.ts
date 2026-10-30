@@ -24,9 +24,18 @@ const getLogoBase64 = (): string => {
   return logoBase64;
 };
 
+export interface EmailAttachment {
+  filename: string;
+  // Conteúdo em base64.
+  content: string;
+  contentType: string;
+}
+
 export interface ResendEmail extends RenderedEmail {
   to: string;
   idempotencyKey: string;
+  // Anexos além da logo (ex.: PDF do formulário para impressão).
+  attachments?: EmailAttachment[];
 }
 
 // Envio pela API HTTP do Resend, compartilhado pelos e-mails transacionais do BFF.
@@ -34,7 +43,14 @@ export interface ResendEmail extends RenderedEmail {
 export class ResendEmailClient {
   constructor(@Inject(ConfigService) private readonly configService: ConfigService) {}
 
-  async send({ html, idempotencyKey, subject, text, to }: ResendEmail): Promise<void> {
+  async send({
+    attachments = [],
+    html,
+    idempotencyKey,
+    subject,
+    text,
+    to,
+  }: ResendEmail): Promise<{ id: string | null }> {
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       signal: AbortSignal.timeout(this.configService.getOrThrow<number>('EMAIL_SEND_TIMEOUT_MS')),
@@ -56,6 +72,11 @@ export class ResendEmailClient {
             content_type: 'image/png',
             content_id: LOGO_CONTENT_ID,
           },
+          ...attachments.map(({ content, contentType, filename }) => ({
+            filename,
+            content,
+            content_type: contentType,
+          })),
         ],
       }),
     });
@@ -63,5 +84,10 @@ export class ResendEmailClient {
     if (!response.ok) {
       throw new Error(`Resend recusou o envio com status ${response.status}.`);
     }
+
+    // ID da mensagem no Resend (usado para acompanhar a entrega pelo webhook).
+    const body = (await response.json().catch(() => null)) as { id?: unknown } | null;
+
+    return { id: typeof body?.id === 'string' ? body.id : null };
   }
 }

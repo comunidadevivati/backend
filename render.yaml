@@ -66,6 +66,9 @@ services:
         value: resend
       - key: RESEND_API_KEY
         sync: false
+      # Webhook do Resend (situação de entrega dos convites dos formulários); opcional.
+      - key: RESEND_WEBHOOK_SECRET
+        sync: false
       - key: EMAIL_FROM
         value: Comunidade Viva e Eficaz <seguranca@mail.comvivaeficaz.com.br>
       - key: PASSWORD_RESET_TTL_MINUTES
