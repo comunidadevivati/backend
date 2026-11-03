@@ -263,8 +263,9 @@ Sem elas a publicação funciona, mas fotos despublicadas não saem do cache da 
   "Conectando ao servidor…".
 - O frontend chama `GET /api/v1/wake` do BFF ao abrir o site e ao voltar para a aba (no máximo uma
   vez a cada 5 min): a requisição acorda o BFF, que acorda em paralelo o PostgreSQL (`select 1`) e a
-  Core API (health repetido por até 50 s), e responde 503 se algum não acordou, para o cliente
-  tentar de novo. Leituras que falham ou recebem 5xx da Core API também a acordam e são repetidas
+  Core API (health por até 50 s, cada tentativa esperando até o prazo), e responde 503 se algum não
+  acordou, para o cliente tentar de novo. O Worker do frontend também chama o health público da
+  Core API nessa rota, de fora do Render, e repete o wake do BFF depois que ela acordou. Leituras que falham ou recebem 5xx da Core API também a acordam e são repetidas
   uma vez; escritas só disparam o despertar. Manter os serviços acordados com pings externos não é
   viável no free:
   a franquia de 750 horas por mês do workspace só cobre um serviço ligado o mês inteiro.

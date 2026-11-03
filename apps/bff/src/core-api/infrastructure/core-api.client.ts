@@ -26,8 +26,6 @@ export class CoreApiUnavailableError extends Error {
 // Abaixo dos 70 s do frontend e dos 100 s do Cloudflare, com folga para repetir a chamada original.
 const WAKE_DEADLINE_MS = 50_000;
 
-const WAKE_ATTEMPT_TIMEOUT_MS = 15_000;
-
 const WAKE_RETRY_DELAY_MS = 2_000;
 
 // Health recente dispensa nova verificação: evita uma chamada à Core API por aba aberta.
@@ -105,7 +103,9 @@ export class CoreApiClient implements OnApplicationBootstrap {
   }
 
   private async isHealthy(deadline: number): Promise<boolean> {
-    const timeoutMs = Math.max(1000, Math.min(WAKE_ATTEMPT_TIMEOUT_MS, deadline - Date.now()));
+    // Cada tentativa espera até o prazo: no cold start o Render segura a requisição até a Core API
+    // subir (30 a 60 s), e cortá-la antes não a acorda mais rápido.
+    const timeoutMs = Math.max(1000, deadline - Date.now());
 
     try {
       const { status } = await this.request({ method: 'GET', path: 'health' }, timeoutMs);
