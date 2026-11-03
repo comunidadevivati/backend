@@ -16,7 +16,9 @@ const toSnapshot = (row: EmailGroupRow): EmailGroupSnapshot => ({
   id: row.id,
   name: row.name,
   description: row.description,
+  type: row.type,
   memberAccountIds: row.memberAccountIds,
+  externalEmails: row.externalEmails,
   version: row.version,
   createdAt: row.createdAt.toISOString(),
   updatedAt: row.updatedAt.toISOString(),
@@ -48,10 +50,12 @@ export class DrizzleEmailGroupRepository extends EmailGroupRepository {
   }
 
   async insert(group: EmailGroup): Promise<'inserted' | 'name_taken'> {
-    const { description, id, memberAccountIds, name } = group.toSnapshot();
+    const { description, externalEmails, id, memberAccountIds, name, type } = group.toSnapshot();
 
     try {
-      await this.db.insert(emailGroups).values({ id, name, description, memberAccountIds });
+      await this.db
+        .insert(emailGroups)
+        .values({ id, name, description, type, memberAccountIds, externalEmails });
     } catch (error) {
       if (isUniqueViolation(error)) {
         return 'name_taken';
@@ -64,7 +68,8 @@ export class DrizzleEmailGroupRepository extends EmailGroupRepository {
   }
 
   async update(group: EmailGroup): Promise<EmailGroupSnapshot | 'name_taken' | null> {
-    const { description, id, memberAccountIds, name, version } = group.toSnapshot();
+    const { description, externalEmails, id, memberAccountIds, name, type, version } =
+      group.toSnapshot();
 
     try {
       const [row] = await this.db
@@ -72,7 +77,9 @@ export class DrizzleEmailGroupRepository extends EmailGroupRepository {
         .set({
           name,
           description,
+          type,
           memberAccountIds,
+          externalEmails,
           version: sql`${emailGroups.version} + 1`,
           updatedAt: sql`now()`,
         })

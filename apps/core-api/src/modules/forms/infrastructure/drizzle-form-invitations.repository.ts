@@ -11,6 +11,7 @@ import {
 import {
   FormInvitation,
   type FormAnswer,
+  recipientKeyOf,
   type FormInvitationSnapshot,
 } from '../domain/form-invitation.js';
 import { formAnonymousResponses, formInvitations } from './database/forms.schema.js';
@@ -217,7 +218,7 @@ export class DrizzleFormInvitationRepository extends FormInvitationRepository {
     );
   }
 
-  async answeredAccountIds(formIds: readonly string[]): Promise<Map<string, Set<string>>> {
+  async answeredRecipientKeys(formIds: readonly string[]): Promise<Map<string, Set<string>>> {
     const answered = new Map<string, Set<string>>();
 
     if (formIds.length === 0) {
@@ -225,14 +226,18 @@ export class DrizzleFormInvitationRepository extends FormInvitationRepository {
     }
 
     const rows = await this.db
-      .select({ formId: formInvitations.formId, accountId: formInvitations.accountId })
+      .select({
+        formId: formInvitations.formId,
+        accountId: formInvitations.accountId,
+        recipientEmail: formInvitations.recipientEmail,
+      })
       .from(formInvitations)
       .where(
         and(inArray(formInvitations.formId, [...formIds]), eq(formInvitations.status, 'ANSWERED')),
       );
 
-    for (const { accountId, formId } of rows) {
-      answered.set(formId, (answered.get(formId) ?? new Set()).add(accountId));
+    for (const { formId, ...recipient } of rows) {
+      answered.set(formId, (answered.get(formId) ?? new Set()).add(recipientKeyOf(recipient)));
     }
 
     return answered;

@@ -78,6 +78,13 @@
       "when": 1793229815979,
       "tag": "0010_entrega_lembrete_e_exclusao",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793363223326,
+      "tag": "0011_grupos_abertos_e_emails_avulsos",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { inArray } from 'drizzle-orm';
 import { DatabaseService } from '../../../shared/infrastructure/database/database.service.js';
-import { EmailGroupDirectory } from '../public/email-group-directory.js';
+import { EmailGroupDirectory, type EmailGroupRecipients } from '../public/email-group-directory.js';
 import { emailGroups } from './database/communication.schema.js';
 import type { Database } from '../../../shared/infrastructure/database/database.js';
 
@@ -29,16 +29,22 @@ export class DrizzleEmailGroupDirectory extends EmailGroupDirectory {
     return rows.map(({ id }) => id);
   }
 
-  async memberAccountIds(groupIds: readonly string[]): Promise<string[]> {
+  async recipients(groupIds: readonly string[]): Promise<EmailGroupRecipients> {
     if (groupIds.length === 0) {
-      return [];
+      return { accountIds: [], emails: [] };
     }
 
     const rows = await this.db
-      .select({ memberAccountIds: emailGroups.memberAccountIds })
+      .select({
+        memberAccountIds: emailGroups.memberAccountIds,
+        externalEmails: emailGroups.externalEmails,
+      })
       .from(emailGroups)
       .where(inArray(emailGroups.id, [...groupIds]));
 
-    return [...new Set(rows.flatMap(({ memberAccountIds }) => memberAccountIds))];
+    return {
+      accountIds: [...new Set(rows.flatMap(({ memberAccountIds }) => memberAccountIds))],
+      emails: [...new Set(rows.flatMap(({ externalEmails }) => externalEmails))],
+    };
   }
 }

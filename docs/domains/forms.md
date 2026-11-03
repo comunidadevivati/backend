@@ -7,8 +7,10 @@ Decisões: [ADR 0013](../adr/0013-formularios-e-grupos-de-emails.md).
 
 | Termo               | Significado                                                                      |
 | ------------------- | -------------------------------------------------------------------------------- |
-| Grupo de e-mails    | Lista nomeada de contas verificadas (membros ou não) que recebem comunicações.   |
+| Grupo de e-mails    | Lista nomeada de destinatários (contas e/ou e-mails avulsos) de comunicações.    |
+| Tipo do grupo       | Restrito (só contas), aberto (só e-mails avulsos) ou misto (os dois).            |
 | Conta elegível      | Conta ativa com e-mail verificado (BFF, `GET /api/v1/email-recipients`).         |
+| E-mail avulso       | Endereço informado à mão, de quem não tem conta; não passa por verificação.      |
 | Formulário          | Pesquisa ou avaliação de um departamento, com período de validade e perguntas.   |
 | Pergunta            | Item do formulário: texto curto, texto longo, múltipla escolha ou escolha única. |
 | Opção               | Alternativa de uma pergunta de escolha (1 a 20, rótulos distintos).              |
@@ -19,9 +21,11 @@ Decisões: [ADR 0013](../adr/0013-formularios-e-grupos-de-emails.md).
 
 ### EmailGroup (Communication)
 
-- Campos: nome (único, sem diferenciar maiúsculas), descrição, IDs das contas e versão.
-- Guarda IDs de contas do BFF, nunca e-mails.
-- Contrato público: `EmailGroupDirectory.existingIds(ids)`.
+- Campos: nome (único, sem diferenciar maiúsculas), descrição, tipo (`RESTRICTED`, `OPEN`,
+  `MIXED`), IDs das contas, e-mails avulsos e versão.
+- Das contas do BFF guarda só os IDs, nunca o e-mail; os avulsos ficam em minúsculas.
+- O tipo restringe as listas: restrito sem e-mails avulsos, aberto sem contas.
+- Contrato público: `EmailGroupDirectory.existingIds(ids)` e `recipients(groupIds)`.
 
 ### Form (Forms)
 

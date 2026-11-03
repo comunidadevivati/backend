@@ -78,7 +78,7 @@ export const finishDispatchSchema = z.strictObject({
   deliveries: z
     .array(
       z.strictObject({
-        accountId: z.uuid(),
+        invitationId: z.uuid(),
         messageId: z.string().max(200).nullable(),
         sent: z.boolean(),
       }),
@@ -99,12 +99,13 @@ export const deliveryEventSchema = z.strictObject({
   occurredAt: z.iso.datetime({ offset: true }),
 });
 
-// Contas resolvidas pelo BFF (nome e e-mail atuais) para os convites do envio.
+// Destinatários resolvidos pelo BFF para os convites do envio: contas (nome e e-mail atuais) e
+// e-mails avulsos (accountId null).
 export const prepareInvitationsSchema = z.strictObject({
   recipients: z
     .array(
       z.strictObject({
-        accountId: z.uuid(),
+        accountId: z.uuid().nullable(),
         name: z.string().min(1).max(200),
         email: z.email().max(320),
       }),

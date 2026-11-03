@@ -1,7 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { uuidv7 } from '../../../shared/infrastructure/id/uuid-v7.js';
 import { EmailGroupDirectory } from '../../communication/public/email-group-directory.js';
-import { Clock, IdGenerator, RecipientGroupCatalog } from '../application/ports.js';
+import {
+  Clock,
+  IdGenerator,
+  RecipientGroupCatalog,
+  type GroupRecipients,
+} from '../application/ports.js';
 
 export class UuidV7IdGenerator extends IdGenerator {
   next(): string {
@@ -38,7 +43,7 @@ export class CommunicationRecipientGroupCatalog extends RecipientGroupCatalog {
     return this.directory.existingIds(ids);
   }
 
-  memberAccountIds(groupIds: readonly string[]): Promise<string[]> {
-    return this.directory.memberAccountIds(groupIds);
+  recipients(groupIds: readonly string[]): Promise<GroupRecipients> {
+    return this.directory.recipients(groupIds);
   }
 }

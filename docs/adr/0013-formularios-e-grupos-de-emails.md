@@ -21,10 +21,15 @@ Consequências).
 ### Contextos
 
 - **Communication** (`modules/communication`, schema `communication`): Aggregate `EmailGroup`
-  (nome único sem diferenciar maiúsculas, até 80 caracteres; descrição até 300; até 5.000 contas).
-  O grupo guarda somente os IDs das contas do BFF (`auth.users`), sem copiar e-mails: o endereço
-  vigente é resolvido no envio. Contrato público para outros contextos: `EmailGroupDirectory`
-  (`existingIds`).
+  (nome único sem diferenciar maiúsculas, até 80 caracteres; descrição até 300; até 5.000
+  destinatários, contas e e-mails avulsos somados). Das contas do BFF (`auth.users`), o grupo guarda
+  somente os IDs, sem copiar e-mails: o endereço vigente é resolvido no envio. Contrato público para
+  outros contextos: `EmailGroupDirectory` (`existingIds`, `recipients`).
+- **Tipo do grupo** (`type`): `RESTRICTED` (restrito: só contas verificadas, escolhidas da lista),
+  `OPEN` (aberto: só **e-mails avulsos**, informados à mão, de pessoas sem conta) ou `MIXED` (misto:
+  os dois). O Domain recusa a lista que o tipo não aceita (`memberAccountIds` no aberto,
+  `externalEmails` no restrito). Os e-mails avulsos ficam em minúsculas, sem repetição, e não passam
+  por verificação. Grupos anteriores ao tipo foram migrados como restritos.
 - **Forms** (`modules/forms`, schema `forms`): Aggregate `Form`. Perguntas e opções são Value Objects
   do Aggregate, gravadas juntas em `jsonb` na ordem de exibição, com IDs estáveis entre edições
   (UUIDv7 gerados pela Core API; um ID desconhecido gera um novo). Os grupos destinatários são
@@ -83,12 +88,16 @@ alterações; papéis e permissões ainda não existem. Recusas de regra respond
 - O BFF pede à Core API para iniciar o envio: o formulário fica com `emailDispatch.status = SENDING`
   e **não aceita nenhuma alteração** (edição, status, imagem, exclusão, novo envio) até a conclusão.
   O BFF responde 202 e continua em segundo plano: resolve nome e e-mail atuais das contas dos grupos
-  (ativas e verificadas), pede os convites à Core API (que devolve os tokens uma única vez), envia
+  (ativas e verificadas), junta os e-mails avulsos pendentes devolvidos pela Core API
+  (`recipientEmails`; o próprio e-mail serve de nome, e o avulso igual ao e-mail de uma conta do
+  envio é descartado), pede os convites à Core API (que devolve os tokens uma única vez), envia
   um e-mail por vez pelo Resend (com intervalo e até 3 tentativas) e informa o resultado
-  (`SENT`/`FAILED`, enviados e falhas). O painel acompanha relendo a lista a cada 3 s.
+  (`SENT`/`FAILED`, enviados e falhas, e o resultado de cada convite por `invitationId`). O painel
+  acompanha relendo a lista a cada 3 s.
 - Envio parado em `SENDING` por mais de 15 minutos (ex.: BFF reiniciado no meio) deixa de bloquear e
   aparece como `FAILED`.
-- Convite (`forms.form_invitations`): um por conta e formulário, com nome e e-mail do momento do
+- Convite (`forms.form_invitations`): um por conta e formulário (ou por e-mail avulso e formulário,
+  com `account_id` nulo e índice único em `lower(recipient_email)`), com nome e e-mail do momento do
   envio, **hash SHA-256** do token (32 bytes aleatórios, base64url) e a resposta. Reenviar troca o
   token dos pendentes (o link anterior deixa de valer), cria convites para quem entrou nos grupos e
   não envia a quem já respondeu.
@@ -165,12 +174,16 @@ alterações; papéis e permissões ainda não existem. Recusas de regra respond
   e Forms depende só do contrato público.
 - Guardar IDs de contas (e não e-mails) evita cópias desatualizadas quando a pessoa troca o e-mail;
   a lista de contas elegíveis vem do BFF, dono das contas (ADR 0003 e 0008).
+- Os e-mails avulsos atendem quem não é membro nem usuário (ex.: convidados externos). Ficam
+  separados das contas, e o tipo do grupo deixa explícito se ele contém endereços não verificados.
 - Perguntas em `jsonb` refletem o Aggregate: são sempre lidas e gravadas com o formulário, e as
   regras ficam no Domain, não no banco.
 
 ## Consequências
 
 - Migration `0006_formularios_e_grupos` (Core API): schemas `communication` e `forms`.
+- Migration `0011_grupos_abertos_e_emails_avulsos`: tipo e e-mails avulsos do grupo e `account_id`
+  opcional no convite.
 - Regra de ciclo de vida do R2: além de `gallery/uploads/` e `members/uploads/`, apagar após 1 dia os
   objetos em `{pasta do ambiente}/forms/uploads/` (envios de imagem abandonados).
 - O adaptador S3 de Forms repete a técnica dos adaptadores da galeria e do Perfil, sem compartilhar
