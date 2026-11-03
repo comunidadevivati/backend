@@ -3,6 +3,7 @@ import {
   EmailGroup,
   buildEmailGroupDetails,
   type EmailGroupSnapshot,
+  type EmailGroupType,
 } from '../domain/email-group.js';
 import type { EmailGroupRepository, IdGenerator } from './ports.js';
 
@@ -23,7 +24,9 @@ const invalidFields = (fields: string[]) => ({ type: 'invalid_fields', fields })
 export interface EmailGroupInput {
   name: string;
   description: string | null;
+  type: EmailGroupType;
   memberAccountIds: string[];
+  externalEmails: string[];
 }
 
 export interface UpdateEmailGroupCommand extends EmailGroupInput {
@@ -31,11 +34,12 @@ export interface UpdateEmailGroupCommand extends EmailGroupInput {
   version: number;
 }
 
-// Resumo da lista: a quantidade de destinatários no lugar das contas.
+// Resumo da lista: a quantidade de destinatários (contas e e-mails avulsos) no lugar das listas.
 export interface EmailGroupSummary {
   id: string;
   name: string;
   description: string | null;
+  type: EmailGroupType;
   recipientCount: number;
   version: number;
   updatedAt: string;
@@ -45,16 +49,19 @@ type GroupResult = Result<EmailGroupSnapshot, CommunicationError>;
 
 const toSummary = ({
   description,
+  externalEmails,
   id,
   memberAccountIds,
   name,
+  type,
   updatedAt,
   version,
 }: EmailGroupSnapshot): EmailGroupSummary => ({
   id,
   name,
   description,
-  recipientCount: memberAccountIds.length,
+  type,
+  recipientCount: memberAccountIds.length + externalEmails.length,
   version,
   updatedAt,
 });
@@ -102,7 +109,7 @@ export class CreateEmailGroupUseCase {
   }
 }
 
-// Substituição completa (nome, descrição e contas) com controle otimista.
+// Substituição completa (nome, descrição, tipo, contas e e-mails avulsos) com controle otimista.
 export class UpdateEmailGroupUseCase {
   constructor(private readonly groups: EmailGroupRepository) {}
 

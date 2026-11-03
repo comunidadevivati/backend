@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import {
   boolean,
   date,
@@ -8,6 +9,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 import type { DeliveryStatus, FormAnswer } from '../../domain/form-invitation.js';
@@ -75,7 +77,8 @@ export const forms = formsSchema.table(
   (table) => [index('forms_department_id_idx').on(table.department, table.id)],
 );
 
-// Convite de uma conta para responder o formulário, com a resposta digital (uma por convite).
+// Convite de uma conta ou de um e-mail avulso para responder o formulário, com a resposta digital
+// (uma por convite).
 export const formInvitations = formsSchema.table(
   'form_invitations',
   {
@@ -83,8 +86,8 @@ export const formInvitations = formsSchema.table(
     formId: uuid('form_id')
       .notNull()
       .references(() => forms.id, { onDelete: 'cascade' }),
-    // Conta do BFF (auth.users); nome e e-mail do momento do envio.
-    accountId: uuid('account_id').notNull(),
+    // Conta do BFF (auth.users), ou null no e-mail avulso; nome e e-mail do momento do envio.
+    accountId: uuid('account_id'),
     recipientName: text('recipient_name').notNull(),
     recipientEmail: text('recipient_email').notNull(),
     // SHA-256 do token do link; o token em si nunca é gravado.
@@ -108,6 +111,10 @@ export const formInvitations = formsSchema.table(
   },
   (table) => [
     unique('form_invitations_form_account_key').on(table.formId, table.accountId),
+    // Um convite por e-mail avulso no formulário (nas contas, vale a chave acima).
+    uniqueIndex('form_invitations_form_external_email_key')
+      .on(table.formId, sql`lower(${table.recipientEmail})`)
+      .where(sql`${table.accountId} is null`),
     index('form_invitations_email_message_id_idx').on(table.emailMessageId),
   ],
 );

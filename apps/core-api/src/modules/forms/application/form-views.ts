@@ -4,6 +4,7 @@ import type {
   Clock,
   FormImageStorage,
   FormInvitationRepository,
+  GroupRecipients,
   RecipientGroupCatalog,
 } from './ports.js';
 
@@ -32,15 +33,22 @@ export interface FormView extends Omit<FormSnapshot, 'headerImage' | 'emailDispa
   } | null;
   invitedCount: number;
   answeredCount: number;
-  // Contas dos grupos que ainda não responderam: quem o reenvio alcançaria.
+  // Destinatários dos grupos que ainda não responderam: quem o reenvio alcançaria.
   pendingRecipientCount: number;
 }
 
-// Contas dos grupos que ainda não responderam (pelo link ou em papel).
+// Destinatários dos grupos que ainda não responderam (pelo link ou em papel). As chaves dos convites
+// respondidos são o ID da conta ou o e-mail avulso (recipientKeyOf).
 export const pendingRecipients = (
-  memberAccountIds: readonly string[],
+  { accountIds, emails }: GroupRecipients,
   answered: ReadonlySet<string> | undefined,
-) => memberAccountIds.filter((accountId) => !answered?.has(accountId));
+): GroupRecipients => ({
+  accountIds: accountIds.filter((accountId) => !answered?.has(accountId)),
+  emails: emails.filter((email) => !answered?.has(email)),
+});
+
+export const recipientCount = ({ accountIds, emails }: GroupRecipients) =>
+  accountIds.length + emails.length;
 
 export class FormViews {
   constructor(
@@ -65,7 +73,7 @@ export class FormViews {
 
     const [stats, answered] = await Promise.all([
       this.invitations.statsByForms(ids),
-      this.invitations.answeredAccountIds(ids),
+      this.invitations.answeredRecipientKeys(ids),
     ]);
 
     const now = this.clock.now();
@@ -74,7 +82,7 @@ export class FormViews {
       snapshots.map(async ({ emailDispatch, headerImage, ...snapshot }) => {
         const dispatch = effectiveEmailDispatch(emailDispatch, now);
 
-        const members = await this.groups.memberAccountIds(snapshot.recipientGroupIds);
+        const members = await this.groups.recipients(snapshot.recipientGroupIds);
 
         return {
           ...snapshot,
@@ -90,7 +98,9 @@ export class FormViews {
           },
           invitedCount: stats.get(snapshot.id)?.invitedCount ?? 0,
           answeredCount: stats.get(snapshot.id)?.answeredCount ?? 0,
-          pendingRecipientCount: pendingRecipients(members, answered.get(snapshot.id)).length,
+          pendingRecipientCount: recipientCount(
+            pendingRecipients(members, answered.get(snapshot.id)),
+          ),
         };
       }),
     );

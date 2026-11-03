@@ -4,14 +4,24 @@ import { integer, pgSchema, text, timestamp, uniqueIndex, uuid } from 'drizzle-o
 // Schema de propriedade exclusiva do contexto Communication (ADR 0013).
 export const communicationSchema = pgSchema('communication');
 
+export const emailGroupType = communicationSchema.enum('email_group_type', [
+  'RESTRICTED',
+  'OPEN',
+  'MIXED',
+]);
+
 export const emailGroups = communicationSchema.table(
   'email_groups',
   {
     id: uuid('id').primaryKey(),
     name: text('name').notNull(),
     description: text('description'),
+    // Grupos anteriores ao tipo eram só de contas verificadas: nascem restritos.
+    type: emailGroupType('type').notNull().default('RESTRICTED'),
     // Contas do BFF (auth.users): referência estável por ID, sem cópia do e-mail.
     memberAccountIds: uuid('member_account_ids').array().notNull().default([]),
+    // E-mails avulsos de pessoas sem conta (grupos abertos e mistos), em minúsculas.
+    externalEmails: text('external_emails').array().notNull().default([]),
     // Controle otimista de concorrência: incrementada a cada gravação.
     version: integer('version').notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

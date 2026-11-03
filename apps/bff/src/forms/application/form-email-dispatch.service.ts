@@ -11,6 +11,8 @@ import { FormPrintout, type FormPrintoutContent } from './form-printout.js';
 export interface StartedDispatch {
   dispatchId: string;
   recipientAccountIds: string[];
+  // E-mails avulsos (pessoas sem conta) dos grupos abertos e mistos.
+  recipientEmails: string[];
   form: {
     id: string;
     title: string;
@@ -29,17 +31,36 @@ export interface DispatchOptions {
 }
 
 interface Delivery {
-  accountId: string;
+  invitationId: string;
   messageId: string | null;
   sent: boolean;
 }
 
 interface InvitationLink {
-  accountId: string;
+  invitationId: string;
   name: string;
   email: string;
   token: string;
 }
+
+// accountId null: e-mail avulso, sem conta (o próprio e-mail serve de nome no convite).
+interface DispatchRecipient {
+  accountId: string | null;
+  name: string;
+  email: string;
+}
+
+// E-mails avulsos que não repetem o e-mail de uma conta do mesmo envio (ninguém recebe duas vezes).
+const externalRecipients = (
+  emails: readonly string[],
+  accounts: readonly { email: string }[],
+): DispatchRecipient[] => {
+  const accountEmails = new Set(accounts.map(({ email }) => email.toLowerCase()));
+
+  return emails
+    .filter((email) => !accountEmails.has(email.toLowerCase()))
+    .map((email) => ({ accountId: null, name: email, email }));
+};
 
 // Intervalo entre e-mails, abaixo do limite de requisições por segundo do Resend.
 const SEND_INTERVAL_MS = 600;
@@ -71,7 +92,7 @@ export class FormEmailDispatchService {
   }
 
   private async dispatch(
-    { dispatchId, form, recipientAccountIds }: StartedDispatch,
+    { dispatchId, form, recipientAccountIds, recipientEmails }: StartedDispatch,
     options: DispatchOptions,
   ) {
     let sentCount = 0;
@@ -81,13 +102,16 @@ export class FormEmailDispatchService {
     const deliveries: Delivery[] = [];
 
     try {
-      const recipients = await this.accounts.findEmailRecipients(recipientAccountIds);
+      const { recipients, unresolvedCount } = await this.resolveRecipients(
+        recipientAccountIds,
+        recipientEmails,
+      );
 
       const links = await this.prepareInvitations(form.id, dispatchId, recipients);
 
       // Convite: contas dos grupos suspensas ou não verificadas não recebem e contam como falha. No
       // lembrete, só os pendentes entram (quem já respondeu não conta).
-      failedCount = options.kind === 'INVITE' ? recipientAccountIds.length - recipients.length : 0;
+      failedCount = options.kind === 'INVITE' ? unresolvedCount : 0;
 
       for (const [index, link] of links.entries()) {
         if (index > 0) {
@@ -109,23 +133,37 @@ export class FormEmailDispatchService {
     } catch (error) {
       this.logger.error(`Preparação do envio ${dispatchId} falhou: ${String(error)}`);
 
-      failedCount = Math.max(failedCount, recipientAccountIds.length - sentCount);
+      failedCount = Math.max(
+        failedCount,
+        recipientAccountIds.length + recipientEmails.length - sentCount,
+      );
     }
 
     await this.finish(form.id, dispatchId, { sentCount, failedCount, deliveries });
   }
 
+  // Contas ativas e verificadas (nome e e-mail atuais) seguidas dos e-mails avulsos; unresolvedCount
+  // conta as contas que não podem mais receber.
+  private async resolveRecipients(accountIds: string[], emails: string[]) {
+    const accounts = await this.accounts.findEmailRecipients(accountIds);
+
+    const recipients: DispatchRecipient[] = [
+      ...accounts.map(({ email, id, name }) => ({ accountId: id, name, email })),
+      ...externalRecipients(emails, accounts),
+    ];
+
+    return { recipients, unresolvedCount: accountIds.length - accounts.length };
+  }
+
   private async prepareInvitations(
     formId: string,
     dispatchId: string,
-    recipients: { id: string; name: string; email: string }[],
+    recipients: DispatchRecipient[],
   ): Promise<InvitationLink[]> {
     const response = await this.coreApi.send({
       method: 'POST',
       path: `forms/${formId}/email-dispatches/${dispatchId}/invitations`,
-      body: {
-        recipients: recipients.map(({ email, id, name }) => ({ accountId: id, name, email })),
-      },
+      body: { recipients },
     });
 
     if (response.status !== 200) {
@@ -138,11 +176,11 @@ export class FormEmailDispatchService {
   private async sendWithRetry(
     form: StartedDispatch['form'],
     dispatchId: string,
-    { accountId, email, name, token }: InvitationLink,
+    { email, invitationId, name, token }: InvitationLink,
     { kind, message }: DispatchOptions,
   ): Promise<Delivery> {
     if (!this.sender.enabled) {
-      return { accountId, messageId: null, sent: false };
+      return { invitationId, messageId: null, sent: false };
     }
 
     const answerUrl = new URL(
@@ -171,7 +209,7 @@ export class FormEmailDispatchService {
           printout,
         });
 
-        return { accountId, messageId, sent: true };
+        return { invitationId, messageId, sent: true };
       } catch (error) {
         this.logger.warn(
           `E-mail do envio ${dispatchId} falhou (tentativa ${attempt}): ${String(error)}`,
@@ -182,7 +220,7 @@ export class FormEmailDispatchService {
       }
     }
 
-    return { accountId, messageId: null, sent: false };
+    return { invitationId, messageId: null, sent: false };
   }
 
   // PDF personalizado (nome e e-mail preenchidos, QR code do link pessoal). Sem ele, o e-mail segue

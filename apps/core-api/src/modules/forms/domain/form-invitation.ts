@@ -63,8 +63,9 @@ export interface FormAnswer {
 export interface FormInvitationSnapshot {
   id: string;
   formId: string;
-  // Conta do BFF convidada; nome e e-mail são os do momento do envio (exibidos na resposta).
-  accountId: string;
+  // Conta do BFF convidada (null no e-mail avulso de grupos abertos e mistos); nome e e-mail são os
+  // do momento do envio (exibidos na resposta).
+  accountId: string | null;
   recipientName: string;
   recipientEmail: string;
   // Somente o hash do token do link vai para o banco.
@@ -210,15 +211,26 @@ export const buildAnswers = (
   return fields.length > 0 ? err(fields) : ok(answers);
 };
 
-// Convite de uma conta para responder um formulário (ADR 0013), com a resposta digital. Uma resposta
-// por convite; reenviar o e-mail troca o token (o link anterior deixa de valer).
+// Chave do destinatário no formulário (um convite por chave): o ID da conta ou, para o e-mail avulso
+// de quem não tem conta, o próprio e-mail em minúsculas (os dois formatos não se confundem).
+export const recipientKeyOf = ({
+  accountId,
+  recipientEmail,
+}: {
+  accountId: string | null;
+  recipientEmail: string;
+}): string => accountId ?? recipientEmail.toLowerCase();
+
+// Convite de uma conta ou de um e-mail avulso para responder um formulário (ADR 0013), com a
+// resposta digital. Uma resposta por convite; reenviar o e-mail troca o token (o link anterior deixa
+// de valer).
 export class FormInvitation {
   private constructor(private state: FormInvitationSnapshot) {}
 
   static create(
     id: string,
     formId: string,
-    recipient: { accountId: string; name: string; email: string },
+    recipient: { accountId: string | null; name: string; email: string },
     tokenHash: string,
     now: string,
   ): FormInvitation {
@@ -246,8 +258,8 @@ export class FormInvitation {
     return new FormInvitation(structuredClone(snapshot));
   }
 
-  get accountId(): string {
-    return this.state.accountId;
+  get recipientKey(): string {
+    return recipientKeyOf(this.state);
   }
 
   get isAnswered(): boolean {

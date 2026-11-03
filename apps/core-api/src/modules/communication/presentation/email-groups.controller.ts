@@ -23,8 +23,8 @@ import {
   type CommunicationError,
   type EmailGroupSummary,
 } from '../application/email-group.use-cases.js';
+import { EMAIL_GROUP_TYPES, type EmailGroupSnapshot } from '../domain/email-group.js';
 import type { Result } from '../../../shared/domain/result.js';
-import type { EmailGroupSnapshot } from '../domain/email-group.js';
 
 // Transporte: somente tipos e limites de tamanho; as regras ficam no Domain.
 const text = z.string().max(2500);
@@ -32,7 +32,9 @@ const text = z.string().max(2500);
 const groupSchema = z.strictObject({
   name: text,
   description: text.nullable().default(null),
+  type: z.enum(EMAIL_GROUP_TYPES).default('RESTRICTED'),
   memberAccountIds: z.array(z.string().max(64)).max(10_000).default([]),
+  externalEmails: z.array(z.string().max(400)).max(10_000).default([]),
 });
 
 const updateGroupSchema = groupSchema.extend({ version: z.number().int().min(1) });

@@ -1,6 +1,6 @@
 import { err, ok, type Result } from '../../../shared/domain/result.js';
-import { FormInvitation } from '../domain/form-invitation.js';
-import { pendingRecipients, type FormView, type FormViews } from './form-views.js';
+import { FormInvitation, recipientKeyOf } from '../domain/form-invitation.js';
+import { pendingRecipients, recipientCount, type FormView, type FormViews } from './form-views.js';
 import { notFound, ruleError, versionConflict, type FormsError } from './forms-errors.js';
 import type { EmailDispatchKind } from '../domain/form.js';
 import type {
@@ -13,23 +13,27 @@ import type {
 } from './ports.js';
 
 // Envio dos e-mails do formulário aos grupos (ADR 0013). A Core API não conhece os endereços: o BFF
-// inicia o envio, informa nome e e-mail das contas, recebe os tokens dos links, envia e conclui.
+// inicia o envio, informa nome e e-mail das contas (e devolve os e-mails avulsos), recebe os tokens
+// dos links, envia e conclui.
 
 export interface StartedDispatch {
   dispatchId: string;
   recipientAccountIds: string[];
+  // E-mails avulsos pendentes dos grupos abertos e mistos.
+  recipientEmails: string[];
   form: FormView;
 }
 
+// accountId null: e-mail avulso (pessoa sem conta).
 export interface DispatchRecipient {
-  accountId: string;
+  accountId: string | null;
   name: string;
   email: string;
 }
 
-// Resultado do envio de cada conta, informado pelo BFF ao concluir.
+// Resultado do envio de cada convite, informado pelo BFF ao concluir.
 export interface DeliveryResult {
-  accountId: string;
+  invitationId: string;
   messageId: string | null;
   sent: boolean;
 }
@@ -37,6 +41,7 @@ export interface DeliveryResult {
 export interface InvitationLink extends DispatchRecipient {
   // Entregue somente nesta resposta; o banco guarda o hash.
   token: string;
+  invitationId: string;
 }
 
 // Marca o envio em andamento: até a conclusão, o formulário fica bloqueado.
@@ -71,13 +76,13 @@ export class StartEmailDispatchUseCase {
 
     // Quem já respondeu (pelo link ou em papel) não recebe de novo; sem ninguém pendente nos grupos,
     // não há envio.
-    const members = await this.groups.memberAccountIds(form.toSnapshot().recipientGroupIds);
+    const members = await this.groups.recipients(form.toSnapshot().recipientGroupIds);
 
-    const answered = (await this.invitations.answeredAccountIds([formId])).get(formId);
+    const answered = (await this.invitations.answeredRecipientKeys([formId])).get(formId);
 
-    const recipientAccountIds = pendingRecipients(members, answered);
+    const pending = pendingRecipients(members, answered);
 
-    if (members.length > 0 && recipientAccountIds.length === 0) {
+    if (recipientCount(members) > 0 && recipientCount(pending) === 0) {
       return err({ type: 'no_pending_recipients' });
     }
 
@@ -95,12 +100,17 @@ export class StartEmailDispatchUseCase {
       return err(versionConflict);
     }
 
-    return ok({ dispatchId, recipientAccountIds, form: await this.views.of(saved) });
+    return ok({
+      dispatchId,
+      recipientAccountIds: pending.accountIds,
+      recipientEmails: pending.emails,
+      form: await this.views.of(saved),
+    });
   }
 }
 
-// Cria os convites das contas ainda sem convite e troca o token dos pendentes. Quem já respondeu não
-// recebe de novo.
+// Cria os convites dos destinatários ainda sem convite e troca o token dos pendentes. Quem já
+// respondeu não recebe de novo.
 export class PrepareInvitationsUseCase {
   constructor(
     private readonly forms: FormRepository,
@@ -127,7 +137,7 @@ export class PrepareInvitationsUseCase {
 
     const existing = new Map(
       (await this.invitations.findByForm(formId)).map((invitation) => [
-        invitation.accountId,
+        invitation.recipientKey,
         invitation,
       ]),
     );
@@ -138,7 +148,9 @@ export class PrepareInvitationsUseCase {
     const isReminder = form.emailDispatchKind === 'REMINDER';
 
     const prepared = recipients.flatMap((recipient) => {
-      const current = existing.get(recipient.accountId);
+      const current = existing.get(
+        recipientKeyOf({ accountId: recipient.accountId, recipientEmail: recipient.email }),
+      );
 
       if (current?.isAnswered || (isReminder && !current)) {
         return [];
@@ -149,12 +161,12 @@ export class PrepareInvitationsUseCase {
       if (current) {
         current.resend(recipient, hash, now);
 
-        return [{ invitation: current, link: { ...recipient, token } }];
+        return [{ invitation: current, link: { ...recipient, token, invitationId: current.id } }];
       }
 
       const invitation = FormInvitation.create(this.ids.next(), formId, recipient, hash, now);
 
-      return [{ invitation, link: { ...recipient, token } }];
+      return [{ invitation, link: { ...recipient, token, invitationId: invitation.id } }];
     });
 
     await this.invitations.saveAll(prepared.map(({ invitation }) => invitation));
@@ -202,12 +214,12 @@ export class FinishEmailDispatchUseCase {
       return;
     }
 
-    const byAccount = new Map(deliveries.map((delivery) => [delivery.accountId, delivery]));
+    const byInvitation = new Map(deliveries.map((delivery) => [delivery.invitationId, delivery]));
 
     const now = this.clock.now().toISOString();
 
     const touched = (await this.invitations.findByForm(formId)).filter((invitation) => {
-      const delivery = byAccount.get(invitation.accountId);
+      const delivery = byInvitation.get(invitation.id);
 
       if (delivery) {
         invitation.recordSend(delivery.messageId, delivery.sent, now);

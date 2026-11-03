@@ -65,12 +65,18 @@ export abstract class HeaderImageProcessor {
   abstract process(input: Uint8Array): Promise<ProcessedHeaderImage | null>;
 }
 
+// Destinatários dos grupos: contas do BFF e e-mails avulsos (minúsculas) de pessoas sem conta.
+export interface GroupRecipients {
+  accountIds: string[];
+  emails: string[];
+}
+
 // Anticorruption Layer para os grupos de e-mails do contexto Communication.
 export abstract class RecipientGroupCatalog {
   abstract existingIds(ids: readonly string[]): Promise<string[]>;
 
-  // Contas dos grupos informados, sem repetição.
-  abstract memberAccountIds(groupIds: readonly string[]): Promise<string[]>;
+  // Destinatários dos grupos informados (contas e e-mails avulsos), sem repetição.
+  abstract recipients(groupIds: readonly string[]): Promise<GroupRecipients>;
 }
 
 export interface InvitationStats {
@@ -106,8 +112,9 @@ export abstract class FormInvitationRepository {
 
   abstract statsByForms(formIds: readonly string[]): Promise<Map<string, InvitationStats>>;
 
-  // Contas que já responderam (pelo link ou em papel), por formulário.
-  abstract answeredAccountIds(formIds: readonly string[]): Promise<Map<string, Set<string>>>;
+  // Destinatários que já responderam (pelo link ou em papel), por formulário, pela chave do
+  // convite (ID da conta ou e-mail avulso; ver recipientKeyOf).
+  abstract answeredRecipientKeys(formIds: readonly string[]): Promise<Map<string, Set<string>>>;
 
   // Formulário anônimo: marca o convite e grava as respostas à parte, na mesma transação. false
   // quando o convite mudou desde a leitura.
