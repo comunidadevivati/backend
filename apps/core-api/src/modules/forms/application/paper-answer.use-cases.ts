@@ -143,6 +143,29 @@ const loadInvitation = async (
   return invitation?.toSnapshot().formId === formId ? invitation : null;
 };
 
+// Resposta em papel (marcar, desfazer e anexar) só com o formulário aceitando respostas: publicado e
+// dentro do período, como a resposta pelo link.
+const loadAnswerableInvitation = async (
+  forms: FormRepository,
+  invitations: FormInvitationRepository,
+  clock: Clock,
+  formId: string,
+  invitationId: string,
+): Promise<Result<FormInvitation, FormsError>> => {
+  const [form, invitation] = await Promise.all([
+    forms.findById(formId),
+    loadInvitation(invitations, formId, invitationId),
+  ]);
+
+  if (!form || !invitation) {
+    return err(notFound);
+  }
+
+  return form.availability(clock.today()) === 'OPEN'
+    ? ok(invitation)
+    : err({ type: 'form_unavailable' });
+};
+
 export class ListInvitationsUseCase {
   constructor(
     private readonly forms: FormRepository,
@@ -165,16 +188,25 @@ export class ListInvitationsUseCase {
 // Marca como respondido em papel, sem anexo (o anexo pode vir depois).
 export class MarkPaperAnswerUseCase {
   constructor(
+    private readonly forms: FormRepository,
     private readonly invitations: FormInvitationRepository,
     private readonly clock: Clock,
   ) {}
 
   async execute(formId: string, invitationId: string): Promise<InvitationResult> {
-    const invitation = await loadInvitation(this.invitations, formId, invitationId);
+    const loaded = await loadAnswerableInvitation(
+      this.forms,
+      this.invitations,
+      this.clock,
+      formId,
+      invitationId,
+    );
 
-    if (!invitation) {
-      return err(notFound);
+    if (!loaded.ok) {
+      return loaded;
     }
+
+    const invitation = loaded.value;
 
     const marked = invitation.markPaperAnswer(this.clock.now().toISOString(), null);
 
@@ -193,16 +225,26 @@ export class MarkPaperAnswerUseCase {
 // Desfaz a marcação em papel e apaga o anexo.
 export class UnmarkPaperAnswerUseCase {
   constructor(
+    private readonly forms: FormRepository,
     private readonly invitations: FormInvitationRepository,
     private readonly storage: FormImageStorage,
+    private readonly clock: Clock,
   ) {}
 
   async execute(formId: string, invitationId: string): Promise<InvitationResult> {
-    const invitation = await loadInvitation(this.invitations, formId, invitationId);
+    const loaded = await loadAnswerableInvitation(
+      this.forms,
+      this.invitations,
+      this.clock,
+      formId,
+      invitationId,
+    );
 
-    if (!invitation) {
-      return err(notFound);
+    if (!loaded.ok) {
+      return loaded;
     }
+
+    const invitation = loaded.value;
 
     const unmarked = invitation.unmarkPaperAnswer();
 
@@ -224,9 +266,11 @@ export class UnmarkPaperAnswerUseCase {
 
 export class RequestPaperAttachmentUploadUseCase {
   constructor(
+    private readonly forms: FormRepository,
     private readonly invitations: FormInvitationRepository,
     private readonly storage: FormImageStorage,
     private readonly ids: IdGenerator,
+    private readonly clock: Clock,
   ) {}
 
   async execute(
@@ -238,11 +282,19 @@ export class RequestPaperAttachmentUploadUseCase {
       return err(storageDisabled);
     }
 
-    const invitation = await loadInvitation(this.invitations, formId, invitationId);
+    const loaded = await loadAnswerableInvitation(
+      this.forms,
+      this.invitations,
+      this.clock,
+      formId,
+      invitationId,
+    );
 
-    if (!invitation) {
-      return err(notFound);
+    if (!loaded.ok) {
+      return loaded;
     }
+
+    const invitation = loaded.value;
 
     if (invitation.toSnapshot().answerChannel === 'DIGITAL') {
       return err({ type: 'already_answered' });
@@ -269,6 +321,7 @@ export class RequestPaperAttachmentUploadUseCase {
 // em papel (substituindo o anexo anterior).
 export class CompletePaperAttachmentUploadUseCase {
   constructor(
+    private readonly forms: FormRepository,
     private readonly invitations: FormInvitationRepository,
     private readonly storage: FormImageStorage,
     private readonly ids: IdGenerator,
@@ -284,11 +337,19 @@ export class CompletePaperAttachmentUploadUseCase {
       return err(storageDisabled);
     }
 
-    const invitation = await loadInvitation(this.invitations, formId, invitationId);
+    const loaded = await loadAnswerableInvitation(
+      this.forms,
+      this.invitations,
+      this.clock,
+      formId,
+      invitationId,
+    );
 
-    if (!invitation) {
-      return err(notFound);
+    if (!loaded.ok) {
+      return loaded;
     }
+
+    const invitation = loaded.value;
 
     const uploadKey = paperKeys.upload(invitationId, upload.uploadId);
 

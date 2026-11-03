@@ -30,13 +30,18 @@ Decisões: [ADR 0013](../adr/0013-formularios-e-grupos-de-emails.md).
 ### Form (Forms)
 
 - Campos: departamento (catálogo em código), título, descrição, início e fim, status, perguntas
-  (com opções), grupos destinatários, imagem do cabeçalho e versão.
+  (com opções), grupos completos, contas e e-mails escolhidos um a um, imagem do cabeçalho e
+  versão.
 - Status: `DRAFT` (não publicado), `PUBLISHED`, `FINISHED`, `CANCELLED`; os dois últimos são finais.
 
 ## Invariantes
 
-- Publicar exige ao menos um grupo e data de fim que ainda não passou.
+- Publicar exige data de fim que ainda não passou; destinatários são opcionais (uso só impresso).
+- Enviar os e-mails exige grupos ou e-mails informados; a lista final não repete endereços.
 - Finalizado ou cancelado não muda mais (nem conteúdo, nem status, nem imagem).
+- Cancelar exige motivo de 10 a 255 caracteres, gravado no formulário.
+- Só aceita respostas (pelo link ou em papel, inclusive anexos e desfazer) publicado e dentro do
+  período. Fora disso, o link mostra apenas título, imagem e status, sem perguntas nem ações.
 - Publicado não pode ser excluído.
 - Grupos destinatários precisam existir em Communication ao salvar.
 - IDs de perguntas e opções são mantidos entre edições.

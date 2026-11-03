@@ -6,7 +6,7 @@ import {
   type FormInvitation,
 } from '../domain/form-invitation.js';
 import { invalidFields, type FormsError } from './forms-errors.js';
-import type { Form, FormQuestion } from '../domain/form.js';
+import type { Form, FormAvailability, FormQuestion, FormStatus } from '../domain/form.js';
 import type { FormHeaderImageView, FormViews } from './form-views.js';
 import type {
   Clock,
@@ -19,18 +19,17 @@ import type {
 // Resposta pelo link do e-mail (ADR 0013): o token é a credencial, sem sessão. Somente o necessário
 // para responder sai daqui (nada de versão, grupos ou dados de controle).
 
-// OPEN: aceita resposta. NOT_STARTED/ENDED: fora do período. CLOSED: não publicado, finalizado ou
-// cancelado.
-type InvitationAvailability = 'OPEN' | 'NOT_STARTED' | 'ENDED' | 'CLOSED';
-
+// Fora de OPEN, só o título, a imagem, o período e o status: sem perguntas, respostas nem destinatário.
 export interface InvitationView {
-  recipient: { name: string; email: string };
+  recipient: { name: string; email: string } | null;
   status: 'PENDING' | 'ANSWERED';
   // PAPER: a resposta foi registrada no painel a partir da versão impressa.
   answerChannel: 'DIGITAL' | 'PAPER' | null;
   answeredAt: string | null;
   answers: FormAnswer[];
-  availability: InvitationAvailability;
+  availability: FormAvailability;
+  // Status do formulário, para explicar por que está fechado (despublicado, finalizado, cancelado).
+  formStatus: FormStatus;
   form: {
     title: string;
     description: string | null;
@@ -50,20 +49,6 @@ export interface SubmitAnswersInput {
   answers: readonly AnswerInput[];
   consentAccepted: boolean;
 }
-
-const availabilityOf = (form: Form, today: string): InvitationAvailability => {
-  const { endsOn, startsOn, status } = form.toSnapshot();
-
-  if (status !== 'PUBLISHED') {
-    return 'CLOSED';
-  }
-
-  if (today < startsOn) {
-    return 'NOT_STARTED';
-  }
-
-  return today > endsOn ? 'ENDED' : 'OPEN';
-};
 
 type Loaded = Result<{ form: Form; invitation: FormInvitation }, FormsError>;
 
@@ -98,7 +83,34 @@ class InvitationReader {
       questions,
       startsOn,
       title,
+      status: formStatus,
     } = await this.views.of(form.toSnapshot());
+
+    const availability = form.availability(this.clock.today());
+
+    // Fechado ou fora do período: nada para responder nem para ver além do aviso.
+    if (availability !== 'OPEN') {
+      return {
+        recipient: null,
+        status,
+        answerChannel: null,
+        answeredAt: null,
+        answers: [],
+        availability,
+        formStatus,
+        form: {
+          title,
+          description: null,
+          startsOn,
+          endsOn,
+          headerImage,
+          questions: [],
+          anonymous,
+          allowAnswerEdit: false,
+          consentText: null,
+        },
+      };
+    }
 
     return {
       recipient: { name: recipientName, email: recipientEmail },
@@ -106,7 +118,8 @@ class InvitationReader {
       answerChannel,
       answeredAt,
       answers,
-      availability: availabilityOf(form, this.clock.today()),
+      availability,
+      formStatus,
       form: {
         title,
         description,
@@ -179,7 +192,7 @@ export class SubmitAnswersUseCase {
 
     const { form, invitation } = loaded.value;
 
-    if (availabilityOf(form, this.reader.today()) !== 'OPEN') {
+    if (form.availability(this.reader.today()) !== 'OPEN') {
       return err({ type: 'form_unavailable' });
     }
 

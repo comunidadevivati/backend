@@ -85,6 +85,27 @@
       "when": 1793363223326,
       "tag": "0011_grupos_abertos_e_emails_avulsos",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793733937480,
+      "tag": "0012_formulario_emails_informados",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793734890933,
+      "tag": "0013_formulario_contas_avulsas",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793736168651,
+      "tag": "0014_formulario_motivo_cancelamento",
+      "breakpoints": true
     }
   ]
 }

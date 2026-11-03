@@ -1,6 +1,12 @@
 import { err, ok, type Result } from '../../../shared/domain/result.js';
 import { FormInvitation, recipientKeyOf } from '../domain/form-invitation.js';
-import { pendingRecipients, recipientCount, type FormView, type FormViews } from './form-views.js';
+import {
+  formRecipients,
+  pendingRecipients,
+  recipientCount,
+  type FormView,
+  type FormViews,
+} from './form-views.js';
 import { notFound, ruleError, versionConflict, type FormsError } from './forms-errors.js';
 import type { EmailDispatchKind } from '../domain/form.js';
 import type {
@@ -19,7 +25,7 @@ import type {
 export interface StartedDispatch {
   dispatchId: string;
   recipientAccountIds: string[];
-  // E-mails avulsos pendentes dos grupos abertos e mistos.
+  // E-mails avulsos pendentes: dos grupos abertos e mistos e os informados no formulário.
   recipientEmails: string[];
   form: FormView;
 }
@@ -76,7 +82,7 @@ export class StartEmailDispatchUseCase {
 
     // Quem já respondeu (pelo link ou em papel) não recebe de novo; sem ninguém pendente nos grupos,
     // não há envio.
-    const members = await this.groups.recipients(form.toSnapshot().recipientGroupIds);
+    const members = await formRecipients(this.groups, form.toSnapshot());
 
     const answered = (await this.invitations.answeredRecipientKeys([formId])).get(formId);
 

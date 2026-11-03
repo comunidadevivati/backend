@@ -1,0 +1,1 @@
+ALTER TABLE "forms"."forms" ADD COLUMN "recipient_account_ids" uuid[] DEFAULT '{}' NOT NULL;

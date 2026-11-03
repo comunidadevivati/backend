@@ -38,9 +38,10 @@ const ANSWERED_AT_FORMAT = new Intl.DateTimeFormat('pt-BR', {
   timeStyle: 'short',
 });
 
-// Nome do arquivo: título e nome da pessoa, só com caracteres seguros.
-const fileNameOf = (title: string, name: string): string =>
-  `${title} - ${name}`
+// Nome do arquivo: título (e nome da pessoa, se houver), só com caracteres seguros.
+const fileNameOf = (...parts: string[]): string =>
+  parts
+    .join(' - ')
     .normalize('NFD')
     .replaceAll(/[̀-ͯ]/gu, '')
     .replaceAll(/[^\w .-]+/gu, '')
@@ -56,6 +57,43 @@ export class FormAnswersPdfService {
     @Inject(CoreApiClient) private readonly coreApi: CoreApiClient,
     @Inject(FormPrintout) private readonly printout: FormPrintout,
   ) {}
+
+  // Versão em branco para imprimir e preencher à mão, sem destinatário (nome e e-mail em branco) e
+  // sem QR code: não depende de convites nem de grupos de e-mails.
+  async renderBlank(formId: string): Promise<AnswersPdfResult> {
+    const response = await this.coreApi.send({ method: 'GET', path: `forms/${formId}` });
+
+    if (response.status === 404) {
+      return { status: 'not_found' };
+    }
+
+    if (response.status !== 200) {
+      return { status: 'unavailable' };
+    }
+
+    const form = response.body as CoreForm;
+
+    const content = await this.printout.render({
+      title: form.title,
+      description: form.description,
+      startsOn: form.startsOn,
+      endsOn: form.endsOn,
+      recipient: { name: '', email: '' },
+      consentText: form.consentText,
+      questions: form.questions.map(
+        ({ description, fieldType, options, required, scale, title }) => ({
+          title,
+          description,
+          fieldType,
+          required,
+          scale,
+          options: options.map(({ label }) => ({ label })),
+        }),
+      ),
+    });
+
+    return { status: 'ok', filename: fileNameOf(form.title), content };
+  }
 
   async render(formId: string, invitationId: string): Promise<AnswersPdfResult> {
     const [formResponse, invitationsResponse] = await Promise.all([

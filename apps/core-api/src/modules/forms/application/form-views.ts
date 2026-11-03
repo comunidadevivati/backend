@@ -33,11 +33,29 @@ export interface FormView extends Omit<FormSnapshot, 'headerImage' | 'emailDispa
   } | null;
   invitedCount: number;
   answeredCount: number;
-  // Destinatários dos grupos que ainda não responderam: quem o reenvio alcançaria.
+  // Destinatários (grupos e e-mails informados) que ainda não responderam: quem o reenvio alcançaria.
   pendingRecipientCount: number;
 }
 
-// Destinatários dos grupos que ainda não responderam (pelo link ou em papel). As chaves dos convites
+// Destinatários do formulário: contas e e-mails avulsos dos grupos completos mais as contas e os
+// e-mails escolhidos um a um no próprio formulário, sem repetição.
+export const formRecipients = async (
+  groups: RecipientGroupCatalog,
+  {
+    recipientAccountIds,
+    recipientEmails,
+    recipientGroupIds,
+  }: Pick<FormSnapshot, 'recipientAccountIds' | 'recipientEmails' | 'recipientGroupIds'>,
+): Promise<GroupRecipients> => {
+  const { accountIds, emails } = await groups.recipients(recipientGroupIds);
+
+  return {
+    accountIds: [...new Set([...accountIds, ...recipientAccountIds])],
+    emails: [...new Set([...emails, ...recipientEmails])],
+  };
+};
+
+// Destinatários que ainda não responderam (pelo link ou em papel). As chaves dos convites
 // respondidos são o ID da conta ou o e-mail avulso (recipientKeyOf).
 export const pendingRecipients = (
   { accountIds, emails }: GroupRecipients,
@@ -82,7 +100,7 @@ export class FormViews {
       snapshots.map(async ({ emailDispatch, headerImage, ...snapshot }) => {
         const dispatch = effectiveEmailDispatch(emailDispatch, now);
 
-        const members = await this.groups.recipients(snapshot.recipientGroupIds);
+        const members = await formRecipients(this.groups, snapshot);
 
         return {
           ...snapshot,
