@@ -5,7 +5,8 @@ import { FormPrintout, type PrintoutQuestion } from './form-printout.js';
 
 // Resposta da Core API após registrar as respostas (só o usado na cópia).
 interface AnsweredInvitation {
-  recipient: { name: string; email: string };
+  // null quando o formulário já não aceita respostas (a Core API omite o destinatário).
+  recipient: { name: string; email: string } | null;
   answeredAt: string | null;
   form: {
     title: string;
@@ -58,7 +59,7 @@ export class AnswersCopyService {
     { answeredAt, form, recipient }: AnsweredInvitation,
     submitted: SubmittedAnswers,
   ) {
-    if (!this.sender.enabled) {
+    if (!this.sender.enabled || !recipient) {
       return;
     }
 

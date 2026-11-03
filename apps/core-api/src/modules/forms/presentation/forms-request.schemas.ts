@@ -2,7 +2,12 @@ import { z } from 'zod';
 import { HEADER_IMAGE_CONTENT_TYPES } from '../application/header-image.use-cases.js';
 import { PAPER_ATTACHMENT_CONTENT_TYPES } from '../application/paper-answer.use-cases.js';
 import { DELIVERY_STATUSES } from '../domain/form-invitation.js';
-import { FORM_STATUSES, QUESTION_FIELD_TYPES } from '../domain/form.js';
+import {
+  CANCELLATION_REASON_MAX_LENGTH,
+  CANCELLATION_REASON_MIN_LENGTH,
+  FORM_STATUSES,
+  QUESTION_FIELD_TYPES,
+} from '../domain/form.js';
 
 // Transporte: somente tipos e limites de tamanho. Formatos e limites do conteúdo são regras do Domain.
 const text = z.string().max(5000);
@@ -29,7 +34,7 @@ const detailsSchema = z.strictObject({
             max: z.number().int(),
             minLabel: text.nullable().default(null),
             maxLabel: text.nullable().default(null),
-            pointLabels: z.array(text).max(11).nullable().default(null),
+            pointLabels: z.array(text).max(101).nullable().default(null),
           })
           .nullable()
           .default(null),
@@ -41,6 +46,8 @@ const detailsSchema = z.strictObject({
     )
     .max(200),
   recipientGroupIds: z.array(z.uuid()).max(200).default([]),
+  recipientAccountIds: z.array(z.uuid()).max(5000).default([]),
+  recipientEmails: z.array(z.string().max(320)).max(5000).default([]),
   anonymous: z.boolean().default(false),
   allowAnswerEdit: z.boolean().default(false),
   consentText: text.nullable().default(null),
@@ -50,10 +57,18 @@ export const createFormSchema = detailsSchema;
 
 export const updateFormSchema = detailsSchema.extend({ version: z.number().int().min(1) });
 
-export const changeStatusSchema = z.strictObject({
-  version: z.number().int().min(1),
-  status: z.enum(FORM_STATUSES),
-});
+// Cancelar exige o motivo (10 a 255 caracteres, sem contar espaços nas pontas).
+export const changeStatusSchema = z
+  .strictObject({
+    version: z.number().int().min(1),
+    status: z.enum(FORM_STATUSES),
+    reason: z.string().trim().max(CANCELLATION_REASON_MAX_LENGTH).nullable().default(null),
+  })
+  .refine(
+    ({ reason, status }) =>
+      status !== 'CANCELLED' || (reason?.length ?? 0) >= CANCELLATION_REASON_MIN_LENGTH,
+    { path: ['reason'] },
+  );
 
 export const listFormsSchema = z.object({
   status: z.enum(FORM_STATUSES).nullable().default(null),

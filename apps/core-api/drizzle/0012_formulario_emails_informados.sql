@@ -1,0 +1,1 @@
+ALTER TABLE "forms"."forms" ADD COLUMN "recipient_emails" text[] DEFAULT '{}' NOT NULL;

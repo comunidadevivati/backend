@@ -77,6 +77,10 @@ export interface FormDetails {
   endsOn: string;
   questions: FormQuestion[];
   recipientGroupIds: string[];
+  // Contas (BFF) escolhidas uma a uma, fora de um grupo completo; sem repetição.
+  recipientAccountIds: string[];
+  // E-mails informados à mão no próprio formulário, em minúsculas e sem repetição.
+  recipientEmails: string[];
   // Anônimo: o painel mostra quem respondeu, nunca o que cada pessoa respondeu.
   anonymous: boolean;
   // Quem respondeu pelo link pode alterar a resposta até o fim do período (não vale para anônimo).
@@ -112,6 +116,8 @@ export interface FormSnapshot extends FormDetails {
   emailDispatch: EmailDispatch | null;
   // Respostas apagadas (LGPD): o conteúdo saiu; a participação continua registrada.
   answersPurgedAt: string | null;
+  // Motivo informado ao cancelar (obrigatório no cancelamento).
+  cancellationReason: string | null;
   version: number;
   createdAt: string;
   updatedAt: string;
@@ -149,19 +155,31 @@ export type FormRuleError =
   | 'published_form'
   | 'form_not_published'
   | 'emails_sending'
-  | 'dispatch_not_found';
+  | 'dispatch_not_found'
+  | 'cancellation_reason_required';
 
-// Publicar exige destinatários e um período que ainda não terminou.
-const checkPublication = (
-  { endsOn, recipientGroupIds }: FormDetails,
-  today: string,
-): FormRuleError | null => {
-  if (recipientGroupIds.length === 0) {
-    return 'recipients_required';
-  }
+// OPEN: aceita resposta. NOT_STARTED/ENDED: fora do período. CLOSED: não publicado, finalizado ou
+// cancelado.
+export type FormAvailability = 'OPEN' | 'NOT_STARTED' | 'ENDED' | 'CLOSED';
 
-  return endsOn < today ? 'form_period_ended' : null;
+// Motivo do cancelamento, sem espaços nas pontas.
+export const CANCELLATION_REASON_MIN_LENGTH = 10;
+
+export const CANCELLATION_REASON_MAX_LENGTH = 255;
+
+const normalizeCancellationReason = (reason: string | null): string | null => {
+  const trimmed = reason?.trim() ?? '';
+
+  return trimmed.length >= CANCELLATION_REASON_MIN_LENGTH &&
+    trimmed.length <= CANCELLATION_REASON_MAX_LENGTH
+    ? trimmed
+    : null;
 };
+
+// Publicar exige um período que ainda não terminou. Destinatários só são exigidos no envio dos
+// e-mails: o formulário pode ser usado apenas impresso.
+const checkPublication = ({ endsOn }: FormDetails, today: string): FormRuleError | null =>
+  endsOn < today ? 'form_period_ended' : null;
 
 // Formulário de um departamento (pesquisa, avaliação de desempenho...), ADR 0013. As perguntas e as
 // opções são Value Objects do Aggregate, com IDs estáveis entre edições.
@@ -195,6 +213,7 @@ export class Form {
         headerImage: null,
         emailDispatch: null,
         answersPurgedAt: null,
+        cancellationReason: null,
         version: 1,
         createdAt: now,
         updatedAt: now,
@@ -242,13 +261,66 @@ export class Form {
     return this.state.status === 'FINISHED' || this.state.status === 'CANCELLED';
   }
 
+  // Se aceita respostas hoje (pelo link ou em papel): só publicado e dentro do período.
+  availability(today: string): FormAvailability {
+    const { endsOn, startsOn, status } = this.state;
+
+    if (status !== 'PUBLISHED') {
+      return 'CLOSED';
+    }
+
+    if (today < startsOn) {
+      return 'NOT_STARTED';
+    }
+
+    return today > endsOn ? 'ENDED' : 'OPEN';
+  }
+
   // Publicado já foi divulgado: antes de excluir, é preciso despublicar, concluir ou cancelar.
   get canBeDeleted(): boolean {
     return this.state.status !== 'PUBLISHED';
   }
 
-  // Edição completa (conteúdo e status); status final não muda mais.
+  // Edição completa (conteúdo e status); status final não muda mais. Cancelar exige motivo, por isso
+  // só pela mudança de status.
   update(details: FormDetails, status: FormStatus, today: string): Result<void, FormRuleError> {
+    if (status === 'CANCELLED' && this.state.status !== 'CANCELLED') {
+      return err('cancellation_reason_required');
+    }
+
+    return this.apply(details, status, today);
+  }
+
+  // Mudança só de status (publicar, despublicar, concluir, cancelar); cancelar exige o motivo.
+  changeStatus(
+    status: FormStatus,
+    today: string,
+    cancellationReason: string | null = null,
+  ): Result<void, FormRuleError> {
+    if (status === this.state.status) {
+      return err(this.isClosed ? 'form_closed' : 'invalid_status_transition');
+    }
+
+    const reason = status === 'CANCELLED' ? normalizeCancellationReason(cancellationReason) : null;
+
+    if (status === 'CANCELLED' && !reason) {
+      return err('cancellation_reason_required');
+    }
+
+    const applied = this.apply(this.details(), status, today);
+
+    if (applied.ok && reason) {
+      this.state = { ...this.state, cancellationReason: reason };
+    }
+
+    return applied;
+  }
+
+  private apply(
+    details: FormDetails,
+    status: FormStatus,
+    today: string,
+  ): Result<void, FormRuleError> {
     const transition = this.checkTransition(status);
 
     if (transition) {
@@ -264,15 +336,6 @@ export class Form {
     this.state = { ...this.state, ...details, status };
 
     return ok();
-  }
-
-  // Mudança só de status (publicar, despublicar, concluir, cancelar).
-  changeStatus(status: FormStatus, today: string): Result<void, FormRuleError> {
-    if (status === this.state.status) {
-      return err(this.isClosed ? 'form_closed' : 'invalid_status_transition');
-    }
-
-    return this.update(this.details(), status, today);
   }
 
   replaceHeaderImage(image: FormHeaderImage): Result<FormHeaderImage | null, 'form_closed'> {
@@ -304,7 +367,8 @@ export class Form {
     return effectiveEmailDispatch(this.state.emailDispatch, now)?.status === 'SENDING';
   }
 
-  // Envio aos grupos: somente formulário publicado, com destinatários e período não encerrado.
+  // Envio dos e-mails: somente formulário publicado, com destinatários (grupos ou e-mails informados)
+  // e período não encerrado.
   startEmailDispatch(
     dispatchId: string,
     kind: EmailDispatchKind,
@@ -322,6 +386,16 @@ export class Form {
 
     if (this.isSendingEmails(now)) {
       return err('emails_sending');
+    }
+
+    const { recipientAccountIds, recipientEmails, recipientGroupIds } = this.state;
+
+    if (
+      recipientGroupIds.length === 0 &&
+      recipientAccountIds.length === 0 &&
+      recipientEmails.length === 0
+    ) {
+      return err('recipients_required');
     }
 
     const publication = checkPublication(this.details(), today);
@@ -402,6 +476,8 @@ export class Form {
       description,
       endsOn,
       questions,
+      recipientAccountIds,
+      recipientEmails,
       recipientGroupIds,
       startsOn,
       title,
@@ -414,6 +490,8 @@ export class Form {
       endsOn,
       questions,
       recipientGroupIds,
+      recipientAccountIds,
+      recipientEmails,
       anonymous,
       allowAnswerEdit,
       consentText,

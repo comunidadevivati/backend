@@ -1,0 +1,1 @@
+ALTER TABLE "forms"."forms" ADD COLUMN "cancellation_reason" text;

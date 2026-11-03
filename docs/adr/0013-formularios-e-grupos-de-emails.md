@@ -42,10 +42,18 @@ Consequências).
 
 - Título até 120, descrição até 2.000, de 1 a 50 perguntas (título até 200, descrição até 500).
   Checkbox e radio têm de 1 a 20 opções distintas, até 100 caracteres cada; texto não tem opções.
-  Datas civis com fim igual ou posterior ao início. Até 50 grupos destinatários.
+  Datas civis com fim igual ou posterior ao início. Destinatários em três listas: até 50 **grupos
+  completos** (`recipientGroupIds`, acompanham quem entrar no grupo depois), até 5.000 **contas**
+  escolhidas uma a uma (`recipientAccountIds`, ex.: grupo marcado e depois com um e-mail removido)
+  e até 5.000 **e-mails** informados à mão (`recipientEmails`: minúsculas, sem repetição, mesmo
+  formato dos e-mails avulsos dos grupos).
 - Status: `DRAFT` → `PUBLISHED`/`CANCELLED`; `PUBLISHED` → `DRAFT`/`FINISHED`/`CANCELLED`;
   `FINISHED` e `CANCELLED` são finais (somente leitura). Um novo nasce `DRAFT` ou `PUBLISHED`.
-- Publicar exige ao menos um grupo e data de fim que não passou (fuso da comunidade).
+- Cancelar exige **motivo** (10 a 255 caracteres, sem contar espaços nas pontas), informado na
+  mudança de status (`PUT /forms/:id/status` com `reason`) e gravado em `cancellationReason`. A
+  edição completa não cancela (responde 409 `cancellation_reason_required`).
+- Publicar exige data de fim que não passou (fuso da comunidade). Destinatários são opcionais: o
+  formulário pode ser salvo, publicado e usado só impresso.
 - Excluir é permitido em qualquer status, exceto `PUBLISHED`, e apaga a imagem do cabeçalho.
 - Grupo excluído continua citado pelos formulários que o usavam; ao salvar de novo, o ID inexistente
   é recusado (400 em `recipientGroupIds`).
@@ -84,7 +92,13 @@ alterações; papéis e permissões ainda não existem. Recusas de regra respond
 ### Envio dos e-mails e resposta pelo link
 
 - Publicar não envia e-mails. O envio é a ação "Enviar e-mails do grupo" (depois, "Reenviar"), só
-  para formulário publicado, com grupos e com a data de fim não passada.
+  para formulário publicado, com destinatários (grupos ou e-mails informados) e com a data de fim
+  não passada.
+- Destinatários do envio: contas e e-mails avulsos dos grupos completos mais as contas e os e-mails
+  escolhidos um a um, sem repetição (o mesmo endereço recebe uma única vez).
+- No painel, os destinatários formam uma lista única de e-mails: marcar um grupo traz os e-mails
+  dele, remover um e-mail deixa o grupo parcial (caixa com "-"). Ao salvar, grupo com todos os
+  e-mails na lista vai como grupo completo; o restante vai como contas e e-mails um a um.
 - O BFF pede à Core API para iniciar o envio: o formulário fica com `emailDispatch.status = SENDING`
   e **não aceita nenhuma alteração** (edição, status, imagem, exclusão, novo envio) até a conclusão.
   O BFF responde 202 e continua em segundo plano: resolve nome e e-mail atuais das contas dos grupos
@@ -120,12 +134,20 @@ alterações; papéis e permissões ainda não existem. Recusas de regra respond
   opcional (PDF, JPEG ou PNG até 2 MB, tipo conferido pelos primeiros bytes) e fica em
   `forms/private/forms/{formulário}/paper-answers/{convite}/{id}.{ext}`. Trocar o anexo apaga o
   anterior; desfazer volta o convite a pendente e apaga o anexo; excluir o formulário apaga os anexos.
+- Marcar, anexar e desfazer a resposta em papel exigem o formulário aceitando respostas (publicado e
+  dentro do período), como a resposta pelo link; fora disso, 409 `form_unavailable`.
+- O link de resposta com o formulário fora de `OPEN` (despublicado, finalizado, cancelado, antes do
+  início ou expirado) devolve só título, imagem, período e `formStatus`: sem perguntas, respostas
+  nem destinatário. A página mostra o status e a mensagem padrão, sem nenhuma ação.
 - Respostas digitais: vistas num diálogo e em PDF (`GET /api/v1/forms/:id/invitations/:invitationId/answers.pdf`, gerado no BFF com o mesmo `pdfkit` da versão para impressão, agora com as respostas preenchidas e opções marcadas). O painel abre o PDF numa nova aba, no visualizador do navegador (ler, baixar, imprimir).
+- Formulário em branco para imprimir: `GET /api/v1/forms/:id/printout.pdf` (BFF, mesmo `pdfkit`),
+  com nome e e-mail em branco e sem QR code; não depende de destinatários nem de convites. O botão
+  fica no card do formulário na listagem e abre o PDF numa nova aba.
 
 ### Perguntas, configurações e modelos
 
 - Tipos: texto curto, texto longo, múltipla escolha, escolha única, lista suspensa (`SELECT`), escala
-  (`SCALE`, de 0 ou 1 até 2..10, com rótulos opcionais nas pontas ou um nome por ponto em
+  (`SCALE`, de 0 ou 1 até 2..100, com rótulos opcionais nas pontas ou um nome por ponto em
   `pointLabels`, ex.: Péssimo, Ruim, Regular, Bom, Ótimo), data (`DATE`) e número
   (`NUMBER`). Cada pergunta pode ser obrigatória; sem nenhuma obrigatória, ao menos uma resposta é
   exigida. Respostas guardam texto, opções ou valor (`value`, para escala e número).
@@ -198,6 +220,8 @@ alterações; papéis e permissões ainda não existem. Recusas de regra respond
 - Migration `0008_respostas_em_papel`: canal da resposta e dados do anexo no convite (respostas
   anteriores marcadas como digitais).
 - Nova dependência do BFF: `pdfkit` (geração do PDF, fontes padrão; sem dependência nativa).
+- Migrations `0012_formulario_emails_informados` e `0013_formulario_contas_avulsas` (e-mails e
+  contas escolhidos um a um no formulário) e `0014_formulario_motivo_cancelamento`.
 - A regra de ciclo de vida de `forms/uploads/` também cobre os anexos de respostas em papel
   abandonados.
 - Migrations `0009_configuracoes_e_anonimato` e `0010_entrega_lembrete_e_exclusao`.

@@ -50,6 +50,10 @@ export const forms = formsSchema.table(
     questions: jsonb('questions').$type<FormQuestion[]>().notNull(),
     // Grupos de e-mails do contexto Communication (referência estável por ID).
     recipientGroupIds: uuid('recipient_group_ids').array().notNull().default([]),
+    // Contas do BFF escolhidas uma a uma, fora de um grupo completo.
+    recipientAccountIds: uuid('recipient_account_ids').array().notNull().default([]),
+    // E-mails informados à mão no formulário (minúsculas, sem repetição).
+    recipientEmails: text('recipient_emails').array().notNull().default([]),
     // Configurações de resposta (anonimato, edição até o fim do período, consentimento LGPD).
     anonymous: boolean('anonymous').notNull().default(false),
     allowAnswerEdit: boolean('allow_answer_edit').notNull().default(false),
@@ -69,6 +73,8 @@ export const forms = formsSchema.table(
     emailDispatchSentCount: integer('email_dispatch_sent_count').notNull().default(0),
     emailDispatchFailedCount: integer('email_dispatch_failed_count').notNull().default(0),
     answersPurgedAt: timestamp('answers_purged_at', { withTimezone: true }),
+    // Motivo informado ao cancelar.
+    cancellationReason: text('cancellation_reason'),
     // Controle otimista de concorrência: incrementada a cada gravação.
     version: integer('version').notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

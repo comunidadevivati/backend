@@ -23,10 +23,35 @@ const ANSWER_HEIGHT = { INPUT: 26, TEXTAREA: 110, DATE: 26, NUMBER: 26 } as cons
 
 const OPTION_HEIGHT = 18;
 
-const SCALE_HEIGHT = 44;
+// Escala: cada linha de números ocupa 26 pt, e os rótulos das pontas mais 18 pt abaixo. Com nome em
+// cada ponto, cada linha tem 58 pt (até duas linhas de nome sob os números).
+const SCALE_ROW_HEIGHT = 26;
 
-// Escala com nome em cada ponto: espaço para até duas linhas sob os números.
-const SCALE_POINTS_HEIGHT = 58;
+const SCALE_EDGE_LABELS_HEIGHT = 18;
+
+const SCALE_POINTS_ROW_HEIGHT = 58;
+
+// Largura de cada ponto: a preferida e a mínima (abaixo dela, os pontos quebram para a linha seguinte).
+const SCALE_STEP = { preferred: 44, minimum: 26, named: 84 } as const;
+
+// Distribuição dos pontos da escala em linhas que cabem na largura da página.
+const scaleLayout = (scale: NonNullable<PrintoutQuestion['scale']>, width: number) => {
+  const count = scale.max - scale.min + 1;
+
+  const step = scale.pointLabels
+    ? SCALE_STEP.named
+    : Math.max(SCALE_STEP.minimum, Math.min(SCALE_STEP.preferred, width / count));
+
+  const perRow = Math.max(1, Math.floor(width / step));
+
+  const rows = Math.ceil(count / perRow);
+
+  const rowHeight = scale.pointLabels ? SCALE_POINTS_ROW_HEIGHT : SCALE_ROW_HEIGHT;
+
+  const height = rows * rowHeight + (scale.pointLabels ? 0 : SCALE_EDGE_LABELS_HEIGHT);
+
+  return { count, step, perRow, rows, rowHeight, height };
+};
 
 const MAX_BOXED_HEIGHT = 500;
 
@@ -214,7 +239,8 @@ export class PdfkitFormPrintout extends FormPrintout {
       this.drawConsent(doc, consentText, width, Boolean(answered));
     }
 
-    if (answered) {
+    // O lembrete do link só vale para a versão pessoal (com QR code), enviada por e-mail.
+    if (answered || !qrCode) {
       return;
     }
 
@@ -253,7 +279,7 @@ export class PdfkitFormPrintout extends FormPrintout {
         return question.options.length * OPTION_HEIGHT;
 
       case 'SCALE':
-        return question.scale?.pointLabels ? SCALE_POINTS_HEIGHT : SCALE_HEIGHT;
+        return question.scale ? scaleLayout(question.scale, width).height : 0;
 
       default:
         return this.textBoxHeight(doc, question.fieldType, textOf(question), width);
@@ -341,22 +367,28 @@ export class PdfkitFormPrintout extends FormPrintout {
       return;
     }
 
-    const count = scale.max - scale.min + 1;
-
     const { pointLabels } = scale;
 
-    // Com nomes por ponto, cada número fica no centro da sua coluna, com o nome embaixo.
-    const step = Math.min(pointLabels ? 84 : 44, width / count);
+    // Pontos em linhas; com nomes por ponto, cada número fica no centro da sua coluna, com o nome
+    // embaixo.
+    const { count, height, perRow, rowHeight, rows, step } = scaleLayout(scale, width);
 
     const top = doc.y;
 
+    const positionOf = (offset: number) => ({
+      x: MARGIN + (offset % perRow) * step,
+      y: top + Math.floor(offset / perRow) * rowHeight,
+    });
+
     for (let value = scale.min; value <= scale.max; value += 1) {
-      const x = MARGIN + (value - scale.min) * step + (pointLabels ? step / 2 : 11);
+      const position = positionOf(value - scale.min);
+
+      const x = position.x + (pointLabels ? step / 2 : 11);
 
       const isAnswer = value === answerValue;
 
       doc
-        .circle(x, top + 11, 10)
+        .circle(x, position.y + 11, 10)
         .lineWidth(0.8)
         .strokeColor(colors.line);
 
@@ -370,14 +402,16 @@ export class PdfkitFormPrintout extends FormPrintout {
         .font('Helvetica-Bold')
         .fontSize(9.5)
         .fillColor(isAnswer ? '#ffffff' : colors.text)
-        .text(String(value), x - 10, top + 7, { width: 20, align: 'center' });
+        .text(String(value), x - 10, position.y + 7, { width: 20, align: 'center' });
     }
 
     doc.font('Helvetica').fontSize(8.5).fillColor(colors.muted);
 
     if (pointLabels) {
       pointLabels.forEach((label, offset) => {
-        doc.text(label, MARGIN + offset * step + 2, top + 26, {
+        const position = positionOf(offset);
+
+        doc.text(label, position.x + 2, position.y + 26, {
           width: step - 4,
           align: 'center',
           height: 22,
@@ -385,22 +419,26 @@ export class PdfkitFormPrintout extends FormPrintout {
         });
       });
 
-      doc.y = top + SCALE_POINTS_HEIGHT;
+      doc.y = top + height;
 
       return;
     }
 
+    // Rótulos das pontas abaixo da última linha: o mínimo à esquerda e o máximo sob o último ponto
+    // (ou na borda, com mais de uma linha).
+    const labelsTop = top + rows * rowHeight;
+
     if (scale.minLabel) {
-      doc.text(scale.minLabel, MARGIN, top + 26, { width: width / 2 });
+      doc.text(scale.minLabel, MARGIN, labelsTop, { width: width / 2 });
     }
 
     if (scale.maxLabel) {
-      const right = MARGIN + (count - 1) * step + 22;
+      const right = rows > 1 ? MARGIN + width : MARGIN + (count - 1) * step + 22;
 
-      doc.text(scale.maxLabel, right - width / 2, top + 26, { width: width / 2, align: 'right' });
+      doc.text(scale.maxLabel, right - width / 2, labelsTop, { width: width / 2, align: 'right' });
     }
 
-    doc.y = top + SCALE_HEIGHT;
+    doc.y = top + height;
   }
 
   private drawTextBox(doc: Doc, text: string, height: number, width: number) {

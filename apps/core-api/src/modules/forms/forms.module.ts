@@ -150,34 +150,41 @@ const imageStorageFactory = (config: ConfigService): FormImageStorage =>
     },
     {
       provide: MarkPaperAnswerUseCase,
-      useFactory: (invitations: FormInvitationRepository, clock: Clock) =>
-        new MarkPaperAnswerUseCase(invitations, clock),
-      inject: [FormInvitationRepository, Clock],
+      useFactory: (forms: FormRepository, invitations: FormInvitationRepository, clock: Clock) =>
+        new MarkPaperAnswerUseCase(forms, invitations, clock),
+      inject: [FormRepository, FormInvitationRepository, Clock],
     },
     {
       provide: UnmarkPaperAnswerUseCase,
-      useFactory: (invitations: FormInvitationRepository, storage: FormImageStorage) =>
-        new UnmarkPaperAnswerUseCase(invitations, storage),
-      inject: [FormInvitationRepository, FormImageStorage],
+      useFactory: (
+        forms: FormRepository,
+        invitations: FormInvitationRepository,
+        storage: FormImageStorage,
+        clock: Clock,
+      ) => new UnmarkPaperAnswerUseCase(forms, invitations, storage, clock),
+      inject: [FormRepository, FormInvitationRepository, FormImageStorage, Clock],
     },
     {
       provide: RequestPaperAttachmentUploadUseCase,
       useFactory: (
-        invitations: FormInvitationRepository,
-        storage: FormImageStorage,
-        ids: IdGenerator,
-      ) => new RequestPaperAttachmentUploadUseCase(invitations, storage, ids),
-      inject: [FormInvitationRepository, FormImageStorage, IdGenerator],
-    },
-    {
-      provide: CompletePaperAttachmentUploadUseCase,
-      useFactory: (
+        forms: FormRepository,
         invitations: FormInvitationRepository,
         storage: FormImageStorage,
         ids: IdGenerator,
         clock: Clock,
-      ) => new CompletePaperAttachmentUploadUseCase(invitations, storage, ids, clock),
-      inject: [FormInvitationRepository, FormImageStorage, IdGenerator, Clock],
+      ) => new RequestPaperAttachmentUploadUseCase(forms, invitations, storage, ids, clock),
+      inject: [FormRepository, FormInvitationRepository, FormImageStorage, IdGenerator, Clock],
+    },
+    {
+      provide: CompletePaperAttachmentUploadUseCase,
+      useFactory: (
+        forms: FormRepository,
+        invitations: FormInvitationRepository,
+        storage: FormImageStorage,
+        ids: IdGenerator,
+        clock: Clock,
+      ) => new CompletePaperAttachmentUploadUseCase(forms, invitations, storage, ids, clock),
+      inject: [FormRepository, FormInvitationRepository, FormImageStorage, IdGenerator, Clock],
     },
     {
       provide: GetPaperAttachmentUrlUseCase,

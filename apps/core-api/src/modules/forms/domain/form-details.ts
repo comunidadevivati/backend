@@ -27,8 +27,19 @@ const QUESTION_OPTION_MAX_LENGTH = 100;
 
 const MAX_RECIPIENT_GROUPS = 50;
 
-// Escala: começa em 0 ou 1 e vai até 2..10; rótulos das pontas com até 40 caracteres.
-const SCALE_MAX_VALUE = 10;
+// Contas e e-mails escolhidos um a um no formulário (o mesmo limite dos grupos de e-mails).
+const MAX_RECIPIENT_EMAILS = 5000;
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+
+const EMAIL_MAX_LENGTH = 320;
+
+// Formato prático de e-mail (local@domínio.tld, sem espaços), o mesmo dos grupos de e-mails.
+const EMAIL = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/u;
+
+// Escala: começa em 0 ou 1 e vai até 2..100 (teto de proteção, não regra de negócio: cada ponto vira
+// um botão na resposta e um círculo no PDF); rótulos das pontas com até 40 caracteres.
+const SCALE_MAX_VALUE = 100;
 
 const SCALE_LABEL_MAX_LENGTH = 40;
 
@@ -58,6 +69,8 @@ export interface FormDetailsInput {
   endsOn: string;
   questions: QuestionInput[];
   recipientGroupIds: string[];
+  recipientAccountIds: string[];
+  recipientEmails: string[];
   anonymous: boolean;
   allowAnswerEdit: boolean;
   consentText: string | null;
@@ -238,6 +251,26 @@ export const buildFormDetails = (
     fields.push('recipientGroupIds');
   }
 
+  const recipientAccountIds = [...new Set(input.recipientAccountIds.map((id) => id.toLowerCase()))];
+
+  if (
+    recipientAccountIds.length > MAX_RECIPIENT_EMAILS ||
+    recipientAccountIds.some((id) => !UUID.test(id))
+  ) {
+    fields.push('recipientAccountIds');
+  }
+
+  const recipientEmails = [
+    ...new Set(input.recipientEmails.map((email) => email.trim().toLowerCase())),
+  ];
+
+  if (
+    recipientEmails.length > MAX_RECIPIENT_EMAILS ||
+    recipientEmails.some((email) => email.length > EMAIL_MAX_LENGTH || !EMAIL.test(email))
+  ) {
+    fields.push('recipientEmails');
+  }
+
   // Resposta anônima não pode ser localizada depois para edição.
   if (input.anonymous && input.allowAnswerEdit) {
     fields.push('allowAnswerEdit');
@@ -264,6 +297,8 @@ export const buildFormDetails = (
     endsOn: input.endsOn,
     questions,
     recipientGroupIds,
+    recipientAccountIds,
+    recipientEmails,
     anonymous: input.anonymous,
     allowAnswerEdit: input.allowAnswerEdit,
     consentText,

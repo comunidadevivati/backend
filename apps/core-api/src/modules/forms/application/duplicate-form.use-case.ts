@@ -56,6 +56,8 @@ export class DuplicateFormUseCase {
         recipientGroupIds: snapshot.recipientGroupIds.filter((groupId) =>
           existingGroups.has(groupId),
         ),
+        recipientAccountIds: snapshot.recipientAccountIds,
+        recipientEmails: snapshot.recipientEmails,
         anonymous: snapshot.anonymous,
         allowAnswerEdit: snapshot.allowAnswerEdit,
         consentText: snapshot.consentText,

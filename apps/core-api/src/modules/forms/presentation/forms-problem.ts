@@ -22,7 +22,10 @@ const CONFLICTS: Record<Conflict, string> = {
   version_conflict: 'O formulário foi alterado por outra pessoa. Recarregue e tente de novo.',
   form_closed: 'Formulários finalizados ou cancelados não podem ser alterados.',
   invalid_status_transition: 'Essa mudança de status não é permitida.',
-  recipients_required: 'Selecione ao menos um grupo de e-mails no formulário.',
+  recipients_required:
+    'Para enviar os e-mails, selecione ao menos um grupo ou informe um e-mail no formulário.',
+  cancellation_reason_required:
+    'Informe o motivo do cancelamento (de 10 a 255 caracteres) pela ação Cancelar formulário.',
   form_period_ended: 'A data de fim já passou: ajuste o período do formulário.',
   published_form:
     'Formulários publicados não podem ser excluídos: despublique, conclua ou cancele antes.',

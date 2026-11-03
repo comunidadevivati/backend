@@ -53,6 +53,8 @@ export interface ChangeFormStatusCommand {
   id: string;
   version: number;
   status: FormStatus;
+  // Obrigatório ao cancelar.
+  reason: string | null;
 }
 
 type FormResult = Result<FormView, FormsError>;
@@ -230,7 +232,7 @@ export class ChangeFormStatusUseCase {
     private readonly clock: Clock,
   ) {}
 
-  async execute({ id, status, version }: ChangeFormStatusCommand): Promise<FormResult> {
+  async execute({ id, reason, status, version }: ChangeFormStatusCommand): Promise<FormResult> {
     const form = await this.forms.findById(id);
 
     if (!form) {
@@ -245,7 +247,7 @@ export class ChangeFormStatusUseCase {
       return err(ruleError('emails_sending'));
     }
 
-    const changed = form.changeStatus(status, this.clock.today());
+    const changed = form.changeStatus(status, this.clock.today(), reason);
 
     if (!changed.ok) {
       return err(ruleError(changed.error));
