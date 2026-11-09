@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER } from '@nestjs/core';
 import { validateEnv } from './config/env.schema.js';
 import { HealthController } from './health/health.controller.js';
+import { BacklogModule } from './modules/backlog/backlog.module.js';
 import { CommunicationModule } from './modules/communication/communication.module.js';
 import { FormsModule } from './modules/forms/forms.module.js';
 import { GalleryModule } from './modules/gallery/gallery.module.js';
@@ -24,6 +25,7 @@ import { ProblemDetailsFilter } from './shared/presentation/problem-details.js';
     GalleryModule,
     CommunicationModule,
     FormsModule,
+    BacklogModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_FILTER, useClass: ProblemDetailsFilter }],

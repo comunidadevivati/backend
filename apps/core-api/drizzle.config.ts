@@ -5,7 +5,7 @@ export default defineConfig({
   dialect: 'postgresql',
   schema: './src/modules/*/infrastructure/database/*.schema.ts',
   out: './drizzle',
-  schemaFilter: ['organization', 'members', 'gallery', 'communication', 'forms'],
+  schemaFilter: ['organization', 'members', 'gallery', 'communication', 'forms', 'backlog'],
   migrations: {
     schema: 'core_api',
   },

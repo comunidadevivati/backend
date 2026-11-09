@@ -111,6 +111,7 @@ Especificações dos Bounded Contexts:
 - Members ([domains/members.md](domains/members.md); decisões no ADR 0007).
 - Gallery ([domains/gallery.md](domains/gallery.md); decisões no ADR 0010).
 - Communication e Forms ([domains/forms.md](domains/forms.md); decisões no ADR 0013).
+- Backlog ([domains/backlog.md](domains/backlog.md); decisões no ADR 0014).
 
 Cada domínio deverá documentar:
 

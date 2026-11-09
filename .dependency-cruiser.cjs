@@ -13,6 +13,7 @@ const boundedContexts = [
   'members',
   'communication',
   'forms',
+  'backlog',
 ];
 
 const applications = ['core-api', 'bff', 'worker'];
