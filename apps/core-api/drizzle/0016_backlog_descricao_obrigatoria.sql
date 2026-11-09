@@ -1,0 +1,1 @@
+ALTER TABLE "backlog"."cards" ALTER COLUMN "description" SET NOT NULL;

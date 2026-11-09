@@ -106,6 +106,20 @@
       "when": 1793736168651,
       "tag": "0014_formulario_motivo_cancelamento",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1794199712251,
+      "tag": "0015_backlog_cards",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1794200857456,
+      "tag": "0016_backlog_descricao_obrigatoria",
+      "breakpoints": true
     }
   ]
 }

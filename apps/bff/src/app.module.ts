@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module.js';
+import { BacklogModule } from './backlog/backlog.module.js';
 import { CommunicationModule } from './communication/communication.module.js';
 import { validateEnv } from './config/env.schema.js';
 import { FormsModule } from './forms/forms.module.js';
@@ -26,6 +27,7 @@ import { DatabaseModule } from './shared/infrastructure/database/database.module
     ProfileModule,
     CommunicationModule,
     FormsModule,
+    BacklogModule,
   ],
   controllers: [HealthController],
 })
